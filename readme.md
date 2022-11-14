@@ -388,7 +388,11 @@ kubectl get svc -n monitoring | grep loki
 
 
 
-在grafana里增加loki数据源，http://loki:3100(如果loki安装在grafana之外的名称空间，则使用上述观察到的loki cluter-ip和端口）
+在grafana里增加loki数据源，
+
+[]: http://loki:3100
+
+(如果loki安装在grafana之外的名称空间，则使用上述观察到的loki cluter-ip和端口）
 
 
 

@@ -381,10 +381,13 @@ helm upgrade --install loki grafana/loki-stack -n monitoring
 
 ```bash
 kubectl get pod -n monitoring | grep loki
+
 kubectl get svc -n monitoring | grep loki
 ```
 
-   观察loki的cluster-ip
+   ![image-20221114162147400](C:\Users\Abraham Cheng\AppData\Roaming\Typora\typora-user-images\image-20221114162147400.png)
+
+ 观察loki的cluster-ip
 
 
 

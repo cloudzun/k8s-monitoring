@@ -2,6 +2,8 @@
 
 
 
+
+
 ## 实现Elasticsearch+filebeat+Kibana Stack
 
 
@@ -44,7 +46,7 @@ longhorn (default)   driver.longhorn.io   Delete          Immediate           tr
 检查longhorn安装情况
 
 ```bash
-root@node1:~# kubectl get pod -n longhorn-system
+kubectl get pod -n longhorn-system
 ```
 
 ```bash
@@ -79,7 +81,6 @@ longhorn-manager-h88kx                      1/1     Running   1 (4h9m ago)   4h9
 longhorn-manager-zf945                      1/1     Running   0              4h9m
 longhorn-manager-zwjpw                      1/1     Running   0              4h9m
 longhorn-ui-6dcd69998-9rscr                 1/1     Running   0              4h9m
-
 ```
 
 ```bash
@@ -97,7 +98,6 @@ longhorn-backend           ClusterIP   10.100.136.167   <none>        9500/TCP  
 longhorn-engine-manager    ClusterIP   None             <none>        <none>         4h11m
 longhorn-frontend          NodePort    10.97.31.129     <none>        80:30210/TCP   4h11m
 longhorn-replica-manager   ClusterIP   None             <none>        <none>         4h11m
-
 ```
 
 
@@ -233,7 +233,6 @@ subjects:
   name: {{ template "filebeat.serviceAccount" . }}
   namespace: {{ .Release.Namespace }}
 {{- end -}}
-
 ```
 
 

@@ -32,7 +32,7 @@ kubectl get sc
 
 
 
-```
+```bash
 root@node1:~# kubectl get sc
 NAME                 PROVISIONER          RECLAIMPOLICY   VOLUMEBINDINGMODE   ALLOWVOLUMEEXPANSION   AGE
 longhorn (default)   driver.longhorn.io   Delete          Immediate           true                   4h13m
@@ -47,7 +47,7 @@ longhorn (default)   driver.longhorn.io   Delete          Immediate           tr
 root@node1:~# kubectl get pod -n longhorn-system
 ```
 
-```
+```bash
 root@node1:~# kubectl get pod -n longhorn-system
 NAME                                        READY   STATUS    RESTARTS       AGE
 csi-attacher-6454556647-cw4jc               1/1     Running   0              4h8m
@@ -105,7 +105,8 @@ longhorn-replica-manager   ClusterIP   None             <none>        <none>    
 将longhorn UI发布到nodeport 30210
 
 ```bash
-kubectl patch svc -n longhorn-system longhorn-frontend  -p '{"spec":{"type": "NodePort"}}'kubectl patch service longhorn-frontend --namespace=longhorn-system --type='json' --patch='[{"op": "replace", "path": "/spec/ports/0/nodePort", "value":30210}]'
+kubectl patch svc -n longhorn-system longhorn-frontend  -p '{"spec":{"type": "NodePort"}}'
+kubectl patch service longhorn-frontend --namespace=longhorn-system --type='json' --patch='[{"op": "replace", "path": "/spec/ports/0/nodePort", "value":30210}]'
 ```
 
 
@@ -322,7 +323,6 @@ NAME                            TYPE        CLUSTER-IP       EXTERNAL-IP   PORT(
 elasticsearch-master            ClusterIP   10.101.66.117    <none>        9200/TCP,9300/TCP   3h56m
 elasticsearch-master-headless   ClusterIP   None             <none>        9200/TCP,9300/TCP   3h56m
 kb-kibana                       NodePort    10.103.185.165   <none>        5601:30140/TCP      3h52m
-
 ```
 
 
@@ -487,7 +487,7 @@ root@node1:~# kubectl logs app-68bc4f46f4-cfvr4
 root@node1:~#
 ```
 
-  	内容无
+​		内容无
 
 
 
@@ -512,7 +512,7 @@ Version: '5.7.23'  socket: '/var/run/mysqld/mysqld.sock'  port: 3306  MySQL Comm
 2022-11-14T03:52:20.912938Z 0 [Note] InnoDB: page_cleaner: 1000ms intended loop took 332284ms. The settings might not be optimal. (flushed=0 and evicted=0, during the time.)
 ```
 
-  	很丰富
+​		很丰富
 
 
 
@@ -654,7 +654,7 @@ kubectl apply -f filebeat-cm.yaml -f app-filebeat.yaml
 
 
 
-```
+```bash
 root@node1:~# kubectl apply -f filebeat-cm.yaml -f app-filebeat.yaml
 configmap/filebeatconf unchanged
 deployment.apps/app configured
@@ -662,8 +662,7 @@ root@node1:~# kubectl get pod
 NAME                    READY   STATUS        RESTARTS   AGE
 app-68bc4f46f4-cfvr4    1/1     Terminating   0          7m46s
 app-6d8c4bc6db-mtbj7    2/2     Running       0          5s
-mysql-d869bcc87-45q9p   1/1     Running       0          7h47m
-
+mysql-d869bcc87-45q9p   1/1     Running       0          7h47m	
 ```
 
 
@@ -672,7 +671,7 @@ mysql-d869bcc87-45q9p   1/1     Running       0          7h47m
 
 
 
-```
+```bash
 Containers:
   filebeat:
     Container ID:   docker://1f32f7d90ef53c04f932e71feb7009a4f5e5ac6b1e3bde97ac6de35ce2c215e2
@@ -728,7 +727,7 @@ Containers:
 
 
 
-```
+```bash
 Events:
   Type    Reason     Age   From               Message
   ----    ------     ----  ----               -------
@@ -739,7 +738,6 @@ Events:
   Normal  Pulled     47s   kubelet            Container image "registry.cn-beijing.aliyuncs.com/dotbalo/alpine:3.6" already present on machine
   Normal  Created    47s   kubelet            Created container app
   Normal  Started    47s   kubelet            Started container app
-
 ```
 
 
@@ -857,7 +855,7 @@ loki-memberlist         ClusterIP   None             <none>        7946/TCP     
 
 亦可在此处查看注入filebeat sidecare的pod日志
 
-```json
+```yaml
 {namespace="default", pod=~"app-6d8c4bc6db-mtbj7"}
 ```
 

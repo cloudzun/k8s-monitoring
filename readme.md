@@ -385,9 +385,9 @@ kubectl get pod -n monitoring | grep loki
 kubectl get svc -n monitoring | grep loki
 ```
 
-   ![image-20221114162147400](C:\Users\Abraham Cheng\AppData\Roaming\Typora\typora-user-images\image-20221114162147400.png)
+![image-20221114163317067](D:\github\k8s-monitoring\image-20221114163317067.png)
 
- 观察loki的cluster-ip
+观察loki的cluster-ip
 
 
 

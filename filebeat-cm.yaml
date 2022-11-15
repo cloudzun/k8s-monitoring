@@ -15,7 +15,7 @@ data:
         pod_deploy_name: '${podDeployName}'
         pod_namespace: '${podNamespace}'
     output.elasticsearch:
-      hosts: ["10.106.144.108:9200"] #替换为elasticsearch服务的地址
+      hosts: ["elasticsearch-master.efk:9200"] #替换为elasticsearch服务的地址
       topic: "filebeat-sidecar"
       codec.json:
         pretty: false

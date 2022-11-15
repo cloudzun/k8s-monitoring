@@ -13,7 +13,7 @@
     - source_labels: [__param_target]
       target_label: instance
     - target_label: __address__
-      replacement: 10.109.147.68:19115 # The blackbox exporter's real hostname:port.需要写IP地址
+      replacement: blackbox-exporter.monitoring:19115 # The blackbox exporter's real hostname:port.需要写IP地址
 
 - job_name: 'WindowsServerMonitor'
   static_configs:
@@ -23,5 +23,4 @@
         server_type: 'windows'
   relabel_configs:
     - source_labels: [__address__]
-      target_label: instance
 

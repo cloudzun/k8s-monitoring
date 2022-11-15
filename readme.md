@@ -318,7 +318,7 @@ kubectl apply -f prometheus-prometheus.yaml
 
 - 13105：K8S Prometheus Dashboard 20211010 中文版
 
-- 11074： Node Exporter for Prometheus Dashboard EN 20201010
+- ： Node Exporter for Prometheus Dashboard EN 20201010
 
 - 12633：
 
@@ -1327,7 +1327,7 @@ nano prometheus-additional.yaml
   static_configs:
     - targets:
       - http://cloudzun.com # Target to probe with http.
-      - https://www.google.com # Target to probe with https.      
+      - https://www.google.com # Target to probe with https.
       - https://chengzhweb1030.azurewebsites.net/
   relabel_configs:
     - source_labels: [__address__]
@@ -1335,7 +1335,7 @@ nano prometheus-additional.yaml
     - source_labels: [__param_target]
       target_label: instance
     - target_label: __address__
-      replacement: 10.106.61.226:19115 # The blackbox exporter's real hostname:port.需要写IP地址
+      replacement: blackbox-exporter.monitoring:19115 # The blackbox exporter's real hostname:port.
 ```
 
 
@@ -2326,7 +2326,7 @@ data:
         pod_deploy_name: '${podDeployName}'
         pod_namespace: '${podNamespace}'
     output.elasticsearch:
-      hosts: ["10.106.144.108:9200"] # 此处需要填充elasticsearch服务器地址
+      hosts: ["elasticsearch-master.efk:9200"] # 此处需要填充elasticsearch服务器地址
       topic: "filebeat-sidecar"
       codec.json:
         pretty: false

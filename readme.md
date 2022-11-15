@@ -1,3 +1,1056 @@
+# 性能分析
+
+
+
+## 安装prometheus-stack
+
+首先到https://github.com/prometheus-operator/kube-prometheus确定兼容当前kubenetes版本的分支，本例中，适配1.23的分支是0.10
+
+克隆匹配的分支
+
+```bash
+git clone -b release-0.10 https://github.com/prometheus-operator/kube-prometheus.git
+
+cd kube-prometheus
+```
+
+
+
+安装Prometheus Operator
+
+```bash
+kubectl apply --server-side -f manifests/setup
+
+kubectl apply -f manifests/
+```
+
+
+
+查看注册的CRD
+
+```bash
+kubectl get crd | grep monitoring
+```
+
+
+
+查看相关的api资源
+
+```bash
+kubectl api-resources | grep monitoring
+```
+
+
+
+查看容器状态
+
+```bash
+kubectl get pod -n monitoring
+```
+
+
+
+查看svc
+
+```bash
+kubectl get svc -n monitoring
+```
+
+
+
+将prometheus-k8s的端口映射到nodeport 30110
+
+```bash
+kubectl patch svc -n monitoring prometheus-k8s  -p '{"spec":{"type": "NodePort"}}'
+kubectl patch service prometheus-k8s --namespace=monitoring --type='json' --patch='[{"op": "replace", "path": "/spec/ports/0/nodePort", "value":30110}]'
+```
+
+
+
+将grafana的端口映射到nodeport 30120
+
+```bash
+kubectl patch svc -n monitoring grafana  -p '{"spec":{"type": "NodePort"}}'
+kubectl patch service grafana --namespace=monitoring --type='json' --patch='[{"op": "replace", "path": "/spec/ports/0/nodePort", "value":30120}]'
+```
+
+
+
+将alertmanager的端口映射到nodeport 30130
+
+```bash
+kubectl patch svc -n monitoring alertmanager-main  -p '{"spec":{"type": "NodePort"}}'
+kubectl patch service alertmanager-main --namespace=monitoring --type='json' --patch='[{"op": "replace", "path": "/spec/ports/0/nodePort", "value":30130}]'
+```
+
+
+
+**备注**
+修改alertmanager副本数（如果不需要高可用性，可以将replicas修改为1）
+
+```bash
+nano manifests/alertmanager-alertmanager.yaml
+```
+
+kubectl apply -f alertmanager-alertmanager.yaml
+
+
+
+修改prometheus副本数（如果不需要高可用性，可以将replicas修改为1）
+
+```bash
+nano manifests/prometheus-prometheus.yaml
+```
+
+kubectl apply -f prometheus-prometheus.yaml
+
+
+
+修改kubeStateMetrics-deployment.yaml中的映像地址（国内版需要）
+
+```bash
+nano kubeStateMetrics-deployment.yaml  
+```
+
+
+
+将k8s.gcr.io/kube-state-metrics/kube-state-metrics:v2.3.0替换为bitnami/kube-state-metrics:2.3.0
+
+kubectl apply -f prometheus-prometheus.yaml
+
+
+
+如果使用lens，在metric配置页面中选择Prometheus Operator monitoring/prometheus-k8s:9090
+
+
+
+推荐dashboard
+
+- 315
+- 1860：Node Exporter Full
+
+- 13105：K8S Prometheus Dashboard 20211010 中文版
+
+- 11074： Node Exporter for Prometheus Dashboard EN 20201010
+
+- 12633：
+
+
+
+## Exporter监控模式分析
+
+
+
+解析export监控模式
+
+```bash
+netstat -lantup
+```
+
+
+
+查看node exporter
+
+```bash
+ps aux | grep node
+```
+
+
+
+查看9100端口的通信
+
+```bash
+netstat -lntp | grep 9100
+```
+
+
+
+收集本地metric信息
+
+```bash
+curl 127.0.0.1:9100/metrics
+```
+
+
+
+解析metric监控模式
+
+```bash
+netstat -lntp | grep kube-proxy
+```
+
+
+
+```bash
+curl http://127.0.0.1:10249/metrics
+```
+
+
+
+查看servicemonitor对象
+
+```bash
+kubectl get servicemonitor -n monitoring
+```
+
+
+
+查看node-exporter配置
+
+```bash
+kubectl get servicemonitor -n monitoring node-exporter -o yaml
+```
+
+
+
+查看node-exporter servicemonitor对应的服务
+
+```bash
+kubectl get svc -n monitoring -l app.kubernetes.io/name=node-exporter
+```
+
+
+
+查看node-exporter对应的端点
+
+```bash
+kubectl get ep node-exporter -n monitoring
+```
+
+
+
+加载 dashboard 14513：Linux Exporter Node查看分析效果
+
+
+
+## ETCD的监控
+
+查看etcd的端口
+
+```bash
+netstat -lntp | grep etcd
+```
+
+
+
+尝试访问etcd的metric接口
+
+```bash
+curl 192.168.1.231:2379/metrics
+```
+
+
+
+```bash
+curl https://192.168.1.231:2379/metrics
+```
+
+分别看到52和60报错
+
+
+
+查看etcd证书信息
+
+```bash
+grep -E "key-file|cert-file" /etc/kubernetes/manifests/etcd.yaml
+```
+
+
+
+再次访问etcd的metric接口
+
+```bash
+curl -s --cert /etc/kubernetes/pki/etcd/server.crt --key /etc/kubernetes/pki/etcd/server.key https://192.168.1.231:2379/metrics -k
+```
+
+
+
+```bash
+curl -s --cert /etc/kubernetes/pki/etcd/server.crt --key /etc/kubernetes/pki/etcd/server.key https://192.168.1.231:2379/metrics -k | tail -1
+```
+
+
+
+创建etcd 服务
+
+```bash
+nano  etcd-svc.yaml
+```
+
+```yaml
+apiVersion: v1
+kind: Endpoints
+metadata:
+  labels:
+    app: etcd-prom
+  name: etcd-prom
+  namespace: kube-system
+subsets:
+- addresses: 
+  - ip: 192.168.1.231 #etcd服务器ip地址
+  ports:
+  - name: https-metrics
+    port: 2379   # etcd端口
+    protocol: TCP
+---
+apiVersion: v1
+kind: Service 
+metadata:
+  labels:
+    app: etcd-prom
+  name: etcd-prom
+  namespace: kube-system
+spec:
+  ports:
+  - name: https-metrics
+    port: 2379
+    protocol: TCP
+    targetPort: 2379
+  type: ClusterIP
+```
+
+
+
+创建服务
+
+```bash
+kubectl apply -f etcd-svc.yaml
+```
+
+
+
+查看etcd服务信息
+
+```bash
+kubectl get svc -A | grep etcd
+```
+
+  观察服务的ip地址
+
+
+
+使用上述etcd服务地址访问metric信息
+
+```bash
+curl -s --cert /etc/kubernetes/pki/etcd/server.crt --key /etc/kubernetes/pki/etcd/server.key https://10.99.164.210:2379/metrics -k | tail -1
+```
+
+
+
+创建secret
+
+```bash
+kubectl -n monitoring create secret generic etcd-certs --from-file=/etc/kubernetes/pki/etcd/healthcheck-client.crt --from-file=/etc/kubernetes/pki/etcd/healthcheck-client.key --from-file=/etc/kubernetes/pki/etcd/ca.crt
+```
+
+
+
+查看secret 
+
+```bash
+kubectl get secret -n monitoring | grep etcd
+```
+
+
+
+修改promethus定义，增加certs信息
+
+```bash
+KUBE_EDITOR="nano"  kubectl edit prometheus k8s -n monitoring
+```
+
+  
+
+```
+  replicas: 1
+  secrets: #加在此处
+  - etcd-certs
+```
+
+
+
+查看Prometheus Pod更新过程
+
+```bash
+kubectl get pod -n monitoring | grep k8s
+```
+
+
+
+查看etcd证书注入信息
+
+```bash
+kubectl exec -n  monitoring prometheus-k8s-0  -c prometheus -- ls /etc/prometheus/secrets/etcd-certs
+```
+
+
+
+创建service monitor配置
+
+```bash
+nano servicemonitor.yaml
+```
+
+
+
+```yaml
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: etcd
+  namespace: monitoring
+  labels:
+    app: etcd
+spec:
+  jobLabel: k8s-app
+  endpoints:
+    - interval: 30s
+      port: https-metrics  # 这个port对应 Service.spec.ports.name
+      scheme: https
+      tlsConfig:
+        caFile: /etc/prometheus/secrets/etcd-certs/ca.crt
+        certFile: /etc/prometheus/secrets/etcd-certs/healthcheck-client.crt
+        keyFile: /etc/prometheus/secrets/etcd-certs/healthcheck-client.key
+        insecureSkipVerify: true  # 关闭证书校验
+  selector:
+    matchLabels:
+      app: etcd-prom  # 跟Service的lables保持一致
+  namespaceSelector:
+    matchNames:
+    - kube-system
+```
+
+
+
+```bash
+kubectl apply -f servicemonitor.yaml
+```
+
+
+
+查看servicemonitor是否被正常加载
+
+```bash
+kubectl get servicemonitor -n monitoring
+```
+
+
+
+从Prometheus status-->configuration http://node1:30110/config 页面上检查etcd配置项
+
+
+
+从Prometheus status-->targets 页面上检查etcd配置项
+
+
+
+从Prometheus status-->service discovery 页面上检查etcd配置项
+
+
+
+从Prometheus 首页尝试使用etcd相关指标进行查看
+
+
+
+加载3070 dashboard在grafana中查看etcd相关数据
+
+
+
+
+
+## 配置MySQL-Exporter
+
+创建MySLQ样例
+
+```bash
+kubectl create deploy mysql --image=registry.cn-beijing.aliyuncs.com/dotbalo/mysql:5.7.23
+```
+
+
+
+查看pod状态
+
+```bash
+kubectl get pod
+```
+
+
+
+获取pod log
+
+```bash
+kubectl logs mysql-686695c696-9cfld
+```
+
+
+
+设置MySQL根密码
+
+```bash
+kubectl set env deploy/mysql MYSQL_ROOT_PASSWORD=mysql
+```
+
+
+
+再次查看pod状态
+
+```bash
+kubectl get pod
+```
+
+
+
+创建服务
+
+```bash
+kubectl expose deploy mysql --port 3306
+```
+
+
+
+查看服务
+
+```bash
+kubectl get svc
+```
+
+
+
+```bash
+kubectl get svc -l app=mysql
+```
+
+
+
+设置exporter所需凭据
+
+```bash
+kubectl get pod
+```
+
+
+
+```bash
+kubectl exec -ti mysql-69d6f69557-5vnvg -- bash
+```
+
+
+
+```bash
+mysql -uroot -pmysql
+```
+
+
+
+```sql
+CREATE USER 'exporter'@'%' IDENTIFIED BY 'exporter' WITH MAX_USER_CONNECTIONS 3;
+
+GRANT PROCESS, REPLICATION CLIENT, SELECT ON *.* TO 'exporter'@'%';
+```
+
+
+
+```bash
+quit
+
+exit
+```
+
+
+
+创建exporter
+
+```bash
+nano mysql-exporter.yaml
+```
+
+```yaml
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mysql-exporter
+  namespace: monitoring
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      k8s-app: mysql-exporter
+  template:
+    metadata:
+      labels:
+        k8s-app: mysql-exporter
+    spec:
+      containers:
+      - name: mysql-exporter
+        image: registry.cn-beijing.aliyuncs.com/dotbalo/mysqld-exporter 
+        env:
+         - name: DATA_SOURCE_NAME
+           value: "exporter:exporter@(mysql.default:3306)/"
+        imagePullPolicy: IfNotPresent
+        ports:
+        - containerPort: 9104
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: mysql-exporter
+  namespace: monitoring
+  labels:
+    k8s-app: mysql-exporter
+spec:
+  type: ClusterIP
+  selector:
+    k8s-app: mysql-exporter
+  ports:
+  - name: api
+    port: 9104
+    protocol: TCP
+```
+
+```bash
+kubectl apply -f mysql-exporter.yaml
+```
+
+
+
+验证exporter的运行情况
+
+```bash
+kubectl get pod -n monitoring
+
+kubectl get svc -n monitoring
+```
+
+
+
+```bash
+curl 10.98.190.181:9104/metrics
+```
+
+
+
+创建ServiceMonitor
+
+```bash
+nano mysql-sm.yaml
+```
+
+```yaml
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: mysql-exporter
+  namespace: monitoring
+  labels:
+    k8s-app: mysql-exporter
+    namespace: monitoring
+spec:
+  jobLabel: k8s-app
+  endpoints:
+  - port: api
+    interval: 30s
+    scheme: http
+  selector:
+    matchLabels:
+      k8s-app: mysql-exporter
+  namespaceSelector:
+    matchNames:
+    - monitoring
+```
+
+```bash
+kubectl apply -f mysql-sm.yaml
+```
+
+
+
+验证ServiceMonitor
+
+```bash
+kubectl get servicemonitor -n monitoring
+```
+
+
+
+检查配置
+从Prometheus status-->configuration 页面上检查MySQL配置项
+
+从Prometheus status-->targets 页面上检查MySQL配置项
+
+从Prometheus status-->service discovery 页面上检查MySQL配置项
+
+从Prometheus 首页尝试使用MySQL相关指标进行查看
+
+加载7362 6239 17320 14057 dashboard在grafana中查看MySQL相关数据
+
+
+
+实验性项目，多个MySQL实例的监控
+https://blog.csdn.net/weixin_44932410/article/details/125029852
+
+后续可以参照
+https://github.com/prometheus/mysqld_exporter
+
+kubectl create ns blog
+
+kubectl apply -f https://raw.githubusercontent.com/cloudzun/k8slab/v1.23/storage/mysql.deploy.yaml
+
+kubectl create ns blog
+
+kubectl exec -ti mysql-deploy-cd587bcb4-hgt68 -n blog  -- bash
+
+mysql -uroot -pwordpress
+
+
+CREATE USER 'exporter'@'%' IDENTIFIED BY 'exporter' WITH MAX_USER_CONNECTIONS 3;
+
+GRANT PROCESS, REPLICATION CLIENT, SELECT ON *.* TO 'exporter'@'%';
+
+quit
+
+exit
+
+nano mysql-exporter.yaml
+
+        env:
+         - name: DATA_SOURCE_NAME
+           value: "exporter:exporter@(mysql.default:3306)/"
+           value: "exporter:exporter@(mysql.blog.svc.cluster.local:3306)/" #增加监控对象
+
+
+
+## 黑盒监控
+
+检查黑blackbox-exporter配置
+
+```bash
+kubectl get pod -n monitoring -l app.kubernetes.io/name=blackbox-exporter
+
+kubectl get svc -n monitoring -l app.kubernetes.io/name=blackbox-exporter
+```
+
+
+
+使用blackbox监控网站
+
+```bash
+curl -s "http://10.106.61.226:19115/probe?target=cloudzun.com&module=http_2xx" | tail -l 
+```
+
+
+
+检查blackbox配置
+
+```bash
+kubectl get cm blackbox-exporter-configuration   -n  monitoring -o yaml
+```
+
+
+
+## 静态配置
+
+### 监控web url
+
+创建静态配置
+
+```bash
+touch prometheus-additional.yaml
+```
+
+
+
+创建对应的secret并查看
+
+```bash
+kubectl create secret generic additional-configs --from-file=prometheus-additional.yaml -n monitoring
+```
+
+
+
+```bash
+kubectl get secret additional-configs   -n monitoring
+
+kubectl describe secret additional-configs -n monitoring
+```
+
+
+
+修改promethus定义，增加additionalScrapeConfigs信息
+
+```bash
+KUBE_EDITOR="nano"  kubectl edit prometheus k8s -n monitoring
+```
+
+  
+
+```yaml
+image: quay.io/prometheus/prometheus:v2.32.1
+  additionalScrapeConfigs:
+    key: prometheus-additional.yaml
+    name: additional-configs
+    optional: true
+```
+
+
+
+更新静态配置文件
+
+```bash
+nano prometheus-additional.yaml
+```
+
+```yaml
+- job_name: 'blackbox'
+  metrics_path: /probe
+  params:
+    module: [http_2xx] # Look for a HTTP 200 response.
+  static_configs:
+    - targets:
+      - http://cloudzun.com # Target to probe with http.
+      - https://www.google.com # Target to probe with https.      
+      - https://chengzhweb1030.azurewebsites.net/
+  relabel_configs:
+    - source_labels: [__address__]
+      target_label: __param_target
+    - source_labels: [__param_target]
+      target_label: instance
+    - target_label: __address__
+      replacement: 10.106.61.226:19115 # The blackbox exporter's real hostname:port.需要写IP地址
+```
+
+
+
+热更新secret文件
+
+```bash
+kubectl create secret generic additional-configs --from-file=prometheus-additional.yaml --dry-run=client -o yaml | kubectl replace -f - -n monitoring
+```
+
+
+
+检查配置
+从Prometheus status-->configuration 页面上检查blackbox配置项
+
+从Prometheus status-->targets 页面上检查blackbox配置项
+
+从Prometheus status-->service discovery 页面上检查blackbox配置项
+
+从Prometheus 首页尝试使用blackbox相关指标进行查看
+
+加载13659 7587 dashboard在grafana中查看blackbox相关数据
+
+
+
+### 监控Windows Exporter
+
+下载安装Windows Exporter
+
+https://github.com/prometheus-community/windows_exporter/releases
+
+
+
+查看本地的metrics输出信息
+http://192.168.1.6:9182/metrics
+
+
+
+更新静态配置文件
+
+```bash
+nano prometheus-additional.yaml
+```
+
+```yaml
+- job_name: 'WindowsServerMonitor'
+  static_configs:
+    - targets:
+      - "192.168.1.6:9182"
+      labels:
+        server_type: 'windows'
+  relabel_configs:
+    - source_labels: [__address__]
+      target_label: instance
+```
+
+
+
+热更新secret文件
+
+```bash
+kubectl create secret generic additional-configs --from-file=prometheus-additional.yaml --dry-run=client -o yaml | kubectl replace -f - -n monitoring
+```
+
+
+
+检查配置
+从Prometheus status-->configuration 页面上检查Windows配置项
+
+从Prometheus status-->targets 页面上检查Windows配置项
+
+从Prometheus status-->service discovery 页面上检查Windows配置项
+
+从Prometheus 首页尝试使用Windows相关指标进行查看
+
+加载10467  15453 dashboard在grafana中查看Windows相关数据
+
+
+
+## 启用AlertManger
+
+*编辑 alertmanager-secret.yaml
+
+```bash
+cd kube-prometheus/manifests/
+```
+
+```bash
+nano alertmanager-secret.yaml
+```
+
+```yaml
+apiVersion: v1
+kind: Secret
+metadata:
+  labels:
+    app.kubernetes.io/component: alert-router
+    app.kubernetes.io/instance: main
+    app.kubernetes.io/name: alertmanager
+    app.kubernetes.io/part-of: kube-prometheus
+    app.kubernetes.io/version: 0.23.0
+  name: alertmanager-main
+  namespace: monitoring
+stringData:
+  alertmanager.yaml: |-
+    "global":
+      "resolve_timeout": "5m"
+      smtp_from: "simaaofu@163.com"
+      smtp_smarthost: "smtp.163.com:465"
+      smtp_auth_username: "simaaofu@163.com"
+      smtp_auth_password: "SMTPAUTHPASSWORD"
+      smtp_require_tls: false
+      smtp_hello: "163.com"
+    "inhibit_rules":
+    - "equal":
+      - "namespace"
+      - "alertname"
+      "source_matchers":
+      - "severity = critical"
+      "target_matchers":
+      - "severity =~ warning|info"
+    - "equal":
+      - "namespace"
+      - "alertname"
+      "source_matchers":
+      - "severity = warning"
+      "target_matchers":
+      - "severity = info"
+    "receivers":
+    - "name": "Default"
+      email_configs:
+      - to : "simaaofu@163.com"
+        send_resolved: true
+    - "name": "Watchdog"
+      email_configs:
+      - to : "chengzunhua@msn.com"
+        send_resolved: true
+    - "name": "Critical"
+      email_configs:
+      - to : "chengzunhua@msn.com"
+        send_resolved: true
+    "route":
+      "group_by":
+      - "namespace"
+      - "job"
+      - "alertname"
+      "group_interval": "5m"
+      "group_wait": "30s"
+      "receiver": "Default"
+      "repeat_interval": "12h"
+      "routes":
+      - "matchers":
+        - "alertname = Watchdog"
+        "receiver": "Watchdog"
+      - "matchers":
+        - "severity = critical"
+        "receiver": "Critical"
+type: Opaque
+```
+
+
+
+更新配置
+
+```bash
+kubectl apply -f  alertmanager-secret.yaml
+```
+
+
+
+在alertmanager界面查看更新的报警组
+
+
+
+在alertmanager status界面查看更新的config
+
+
+
+查看prometheusrule
+
+```bash
+kubectl get prometheusrule -n monitoring
+```
+
+
+
+查看node-exporter对应的prometheusrule
+
+```bash
+kubectl get prometheusrule node-exporter-rules -n monitoring -o yaml
+```
+
+
+
+创建web网站报警配置
+
+```bash
+nano  web-rule.yaml
+```
+
+```yaml
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  labels:
+    app.kubernetes.io/component: exporter
+    app.kubernetes.io/name: blackbox-exporter
+    prometheus: k8s
+    role: alert-rules
+  name: blackbox
+  namespace: monitoring
+spec:
+  groups:
+  - name: blackbox-exporter
+    rules:
+    - alert: DomainAccessDelayExceeds1s
+      annotations:
+        description:  域名 {{ $labels.instance }} 检测延迟大于1秒, 当前值为 {{ $value }}
+        summary: 域名探测，访问延迟超过1秒
+      expr: sum(probe_http_duration_seconds{job=~"blackbox"}) by (instance) > 1
+      for: 1m
+      labels:
+        severity: warning
+        type: blackbox
+```
+
+```bash
+kubectl apply -f web-rule.yaml
+```
+
+
+
+到邮箱查看告警邮件
+
 # 事件收集日志分析
 
 

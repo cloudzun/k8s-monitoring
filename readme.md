@@ -368,16 +368,11 @@ tcp6       0      0 :::10250                :::*                    LISTEN      
 尝试访问kube-proxy metric
 
 ```bash
-curl --cacert /var/lib/kubelet/pki/kubelet.crt --cert /etc/kubernetes/pki/apiserver-kubelet-client.crt --key /etc/kubernetes/pki/apiserver-kubelet-client.key  https://node1:10250/metrics
+curl -s --cacert /var/lib/kubelet/pki/kubelet.crt --cert /etc/kubernetes/pki/apiserver-kubelet-client.crt --key /etc/kubernetes/pki/apiserver-kubelet-client.key  https://node1:10250/metrics | tail -l
 ```
 
 ```bash
-workqueue_unfinished_work_seconds{name="DynamicCABundle-client-ca-bundle"} 0
-# HELP workqueue_work_duration_seconds [ALPHA] How long in seconds processing an item from workqueue takes.
-# TYPE workqueue_work_duration_seconds histogram
-workqueue_work_duration_seconds_bucket{name="DynamicCABundle-client-ca-bundle",le="1e-08"} 0
-workqueue_work_duration_seconds_bucket{name="DynamicCABundle-client-ca-bundle",le="1e-07"} 0
-workqueue_work_duration_seconds_bucket{name="DynamicCABundle-client-ca-bundle",le="1e-06"} 0
+root@node1:~# curl -s --cacert /var/lib/kubelet/pki/kubelet.crt --cert /etc/kubernetes/pki/apiserver-kubelet-client.crt --key /etc/kubernetes/pki/apiserver-kubelet-client.key  https://node1:10250/metrics | tail -l
 workqueue_work_duration_seconds_bucket{name="DynamicCABundle-client-ca-bundle",le="9.999999999999999e-06"} 0
 workqueue_work_duration_seconds_bucket{name="DynamicCABundle-client-ca-bundle",le="9.999999999999999e-05"} 1
 workqueue_work_duration_seconds_bucket{name="DynamicCABundle-client-ca-bundle",le="0.001"} 2
@@ -412,7 +407,6 @@ kind: ServiceMonitor
 metadata:
   annotations:
     kubectl.kubernetes.io/last-applied-configuration: |
-      {"apiVersion":"monitoring.coreos.com/v1","kind":"ServiceMonitor","metadata":{"annotations":{},"labels":{"app.kubernetes.io/component":"exporter","app.kubernetes.io/name":"node-exporter","app.kubernetes.io/part-of":"kube-prometheus","app.kubernetes.io/version":"1.3.1"},"name":"node-exporter","namespace":"monitoring"},"spec":{"endpoints":[{"bearerTokenFile":"/var/run/secrets/kubernetes.io/serviceaccount/token","interval":"15s","port":"https","relabelings":[{"action":"replace","regex":"(.*)","replacement":"$1","sourceLabels":["__meta_kubernetes_pod_node_name"],"targetLabel":"instance"}],"scheme":"https","tlsConfig":{"insecureSkipVerify":true}}],"jobLabel":"app.kubernetes.io/name","selector":{"matchLabels":{"app.kubernetes.io/component":"exporter","app.kubernetes.io/name":"node-exporter","app.kubernetes.io/part-of":"kube-prometheus"}}}}
   creationTimestamp: "2022-11-15T01:26:36Z"
   generation: 1
   labels:
@@ -445,7 +439,6 @@ spec:
       app.kubernetes.io/component: exporter
       app.kubernetes.io/name: node-exporter
       app.kubernetes.io/part-of: kube-prometheus
-
 ```
 
 
@@ -494,31 +487,11 @@ tcp        0      0 127.0.0.1:9100          0.0.0.0:*               LISTEN      
 收集本地metric信息
 
 ```bash
-curl 127.0.0.1:9100/metrics
+curl -s "http://127.0.0.1:9100/metrics" | tail -l
 ```
 
 ```bash
-process_cpu_seconds_total 4.89
-# HELP process_max_fds Maximum number of open file descriptors.
-# TYPE process_max_fds gauge
-process_max_fds 1.048576e+06
-# HELP process_open_fds Number of open file descriptors.
-# TYPE process_open_fds gauge
-process_open_fds 10
-# HELP process_resident_memory_bytes Resident memory size in bytes.
-# TYPE process_resident_memory_bytes gauge
-process_resident_memory_bytes 2.0754432e+07
-# HELP process_start_time_seconds Start time of the process since unix epoch in seconds.
-# TYPE process_start_time_seconds gauge
-process_start_time_seconds 1.66847561101e+09
-# HELP process_virtual_memory_bytes Virtual memory size in bytes.
-# TYPE process_virtual_memory_bytes gauge
-process_virtual_memory_bytes 7.35113216e+08
-# HELP process_virtual_memory_max_bytes Maximum amount of virtual memory available in bytes.
-# TYPE process_virtual_memory_max_bytes gauge
-process_virtual_memory_max_bytes 1.8446744073709552e+19
-# HELP promhttp_metric_handler_errors_total Total number of internal errors encountered by the promhttp metric handler.
-# TYPE promhttp_metric_handler_errors_total counter
+root@node1:~# curl -s "http://127.0.0.1:9100/metrics" | tail -l
 promhttp_metric_handler_errors_total{cause="encoding"} 0
 promhttp_metric_handler_errors_total{cause="gathering"} 0
 # HELP promhttp_metric_handler_requests_in_flight Current number of scrapes being served.
@@ -526,7 +499,7 @@ promhttp_metric_handler_errors_total{cause="gathering"} 0
 promhttp_metric_handler_requests_in_flight 1
 # HELP promhttp_metric_handler_requests_total Total number of scrapes by HTTP status code.
 # TYPE promhttp_metric_handler_requests_total counter
-promhttp_metric_handler_requests_total{code="200"} 104
+promhttp_metric_handler_requests_total{code="200"} 1386
 promhttp_metric_handler_requests_total{code="500"} 0
 promhttp_metric_handler_requests_total{code="503"} 0
 ```
@@ -604,40 +577,10 @@ root@node1:~# grep -E "key-file|cert-file" /etc/kubernetes/manifests/etcd.yaml
 再次访问etcd的metric接口
 
 ```bash
-curl -s --cert /etc/kubernetes/pki/etcd/server.crt --key /etc/kubernetes/pki/etcd/server.key https://192.168.1.231:2379/metrics -k
-```
-
-```bash
-process_open_fds 110
-# HELP process_resident_memory_bytes Resident memory size in bytes.
-# TYPE process_resident_memory_bytes gauge
-process_resident_memory_bytes 7.9151104e+07
-# HELP process_start_time_seconds Start time of the process since unix epoch in seconds.
-# TYPE process_start_time_seconds gauge
-process_start_time_seconds 1.66847506869e+09
-# HELP process_virtual_memory_bytes Virtual memory size in bytes.
-# TYPE process_virtual_memory_bytes gauge
-process_virtual_memory_bytes 1.1554193408e+10
-# HELP process_virtual_memory_max_bytes Maximum amount of virtual memory available in bytes.
-# TYPE process_virtual_memory_max_bytes gauge
-process_virtual_memory_max_bytes 1.8446744073709552e+19
-# HELP promhttp_metric_handler_requests_in_flight Current number of scrapes being served.
-# TYPE promhttp_metric_handler_requests_in_flight gauge
-promhttp_metric_handler_requests_in_flight 1
-# HELP promhttp_metric_handler_requests_total Total number of scrapes by HTTP status code.
-# TYPE promhttp_metric_handler_requests_total counter
-promhttp_metric_handler_requests_total{code="200"} 0
-promhttp_metric_handler_requests_total{code="500"} 0
-promhttp_metric_handler_requests_total{code="503"} 0
-```
-
-
-
-```bash
 curl -s --cert /etc/kubernetes/pki/etcd/server.crt --key /etc/kubernetes/pki/etcd/server.key https://192.168.1.231:2379/metrics -k | tail -1
 ```
 
-```
+```bash
 root@node1:~# curl -s --cert /etc/kubernetes/pki/etcd/server.crt --key /etc/kubernetes/pki/etcd/server.key https://192.168.1.231:2379/metrics -k | tail -1
 promhttp_metric_handler_requests_total{code="503"} 0
 ```
@@ -1101,21 +1044,11 @@ mysql-exporter          ClusterIP   10.102.106.129   <none>        9104/TCP     
 查看mysql的metrics数据
 
 ```bash
-curl 10.102.106.129:9104/metrics
+curl -s "http://10.102.106.129:9104/metrics" | tail -l
 ```
 
 ```bash
-process_open_fds 9
-# HELP process_resident_memory_bytes Resident memory size in bytes.
-# TYPE process_resident_memory_bytes gauge
-process_resident_memory_bytes 1.1227136e+07
-# HELP process_start_time_seconds Start time of the process since unix epoch in seconds.
-# TYPE process_start_time_seconds gauge
-process_start_time_seconds 1.66849368105e+09
-# HELP process_virtual_memory_bytes Virtual memory size in bytes.
-# TYPE process_virtual_memory_bytes gauge
-process_virtual_memory_bytes 7.3054208e+08
-# HELP process_virtual_memory_max_bytes Maximum amount of virtual memory available in bytes.
+root@node1:~# curl -s "http://10.102.106.129:9104/metrics" | tail -l
 # TYPE process_virtual_memory_max_bytes gauge
 process_virtual_memory_max_bytes 1.8446744073709552e+19
 # HELP promhttp_metric_handler_requests_in_flight Current number of scrapes being served.
@@ -1123,7 +1056,7 @@ process_virtual_memory_max_bytes 1.8446744073709552e+19
 promhttp_metric_handler_requests_in_flight 1
 # HELP promhttp_metric_handler_requests_total Total number of scrapes by HTTP status code.
 # TYPE promhttp_metric_handler_requests_total counter
-promhttp_metric_handler_requests_total{code="200"} 0
+promhttp_metric_handler_requests_total{code="200"} 70
 promhttp_metric_handler_requests_total{code="500"} 0
 promhttp_metric_handler_requests_total{code="503"} 0
 ```
@@ -1197,7 +1130,7 @@ mysql-exporter            16s
 
 加载 17320 dashboard在grafana dashboard中查看MySQL相关数据  (其他推荐:7362 6239 14057 )
 
-
+![image-20221115144444246](readme.assets/image-20221115144444246.png)
 
 
 
@@ -1211,12 +1144,36 @@ kubectl get pod -n monitoring -l app.kubernetes.io/name=blackbox-exporter
 kubectl get svc -n monitoring -l app.kubernetes.io/name=blackbox-exporter
 ```
 
+```bash
+root@node1:~# kubectl get pod -n monitoring -l app.kubernetes.io/name=blackbox-exporter
+NAME                                 READY   STATUS    RESTARTS   AGE
+blackbox-exporter-6b79c4588b-p5czf   3/3     Running   0          5h18m
+root@node1:~#
+root@node1:~# kubectl get svc -n monitoring -l app.kubernetes.io/name=blackbox-exporter
+NAME                TYPE        CLUSTER-IP       EXTERNAL-IP   PORT(S)              AGE
+blackbox-exporter   ClusterIP   10.106.215.152   <none>        9115/TCP,19115/TCP   5h18m
+```
+
 
 
 使用blackbox监控网站
 
 ```bash
-curl -s "http://10.106.61.226:19115/probe?target=cloudzun.com&module=http_2xx" | tail -l 
+curl -s "http://10.106.215.152:19115/probe?target=cloudzun.com&module=http_2xx" | tail -l 
+```
+
+```bash
+root@node1:~# curl -s "http://10.106.215.152:19115/probe?target=cloudzun.com&module=http_2xx" | tail -l
+probe_http_version 1.1
+# HELP probe_ip_addr_hash Specifies the hash of IP address. It's useful to detect if the IP address changes.
+# TYPE probe_ip_addr_hash gauge
+probe_ip_addr_hash 2.469229557e+09
+# HELP probe_ip_protocol Specifies whether probe ip protocol is IP4 or IP6
+# TYPE probe_ip_protocol gauge
+probe_ip_protocol 4
+# HELP probe_success Displays whether or not the probe was a success
+# TYPE probe_success gauge
+probe_success 1
 ```
 
 
@@ -1227,9 +1184,70 @@ curl -s "http://10.106.61.226:19115/probe?target=cloudzun.com&module=http_2xx" |
 kubectl get cm blackbox-exporter-configuration   -n  monitoring -o yaml
 ```
 
+```bash
+apiVersion: v1
+data:
+  config.yml: |-
+    "modules":
+      "http_2xx":
+        "http":
+          "preferred_ip_protocol": "ip4"
+        "prober": "http"
+      "http_post_2xx":
+        "http":
+          "method": "POST"
+          "preferred_ip_protocol": "ip4"
+        "prober": "http"
+      "irc_banner":
+        "prober": "tcp"
+        "tcp":
+          "preferred_ip_protocol": "ip4"
+          "query_response":
+          - "send": "NICK prober"
+          - "send": "USER prober prober prober :prober"
+          - "expect": "PING :([^ ]+)"
+            "send": "PONG ${1}"
+          - "expect": "^:[^ ]+ 001"
+      "pop3s_banner":
+        "prober": "tcp"
+        "tcp":
+          "preferred_ip_protocol": "ip4"
+          "query_response":
+          - "expect": "^+OK"
+          "tls": true
+          "tls_config":
+            "insecure_skip_verify": false
+      "ssh_banner":
+        "prober": "tcp"
+        "tcp":
+          "preferred_ip_protocol": "ip4"
+          "query_response":
+          - "expect": "^SSH-2.0-"
+      "tcp_connect":
+        "prober": "tcp"
+        "tcp":
+          "preferred_ip_protocol": "ip4"
+kind: ConfigMap
+metadata:
+  annotations:
+    kubectl.kubernetes.io/last-applied-configuration: |
+  creationTimestamp: "2022-11-15T01:26:34Z"
+  labels:
+    app.kubernetes.io/component: exporter
+    app.kubernetes.io/name: blackbox-exporter
+    app.kubernetes.io/part-of: kube-prometheus
+    app.kubernetes.io/version: 0.19.0
+  name: blackbox-exporter-configuration
+  namespace: monitoring
+  resourceVersion: "3658"
+  uid: f89f1661-0e9d-4b7e-b13e-56bf9509780e
+```
+
 
 
 ## 静态配置
+
+
 
 ### 监控web url
 
@@ -1247,12 +1265,28 @@ touch prometheus-additional.yaml
 kubectl create secret generic additional-configs --from-file=prometheus-additional.yaml -n monitoring
 ```
 
-
-
 ```bash
 kubectl get secret additional-configs   -n monitoring
 
 kubectl describe secret additional-configs -n monitoring
+```
+
+```bash
+root@node1:~# kubectl get secret additional-configs   -n monitoring
+NAME                 TYPE     DATA   AGE
+additional-configs   Opaque   1      16s
+root@node1:~#
+root@node1:~# kubectl describe secret additional-configs -n monitoring
+Name:         additional-configs
+Namespace:    monitoring
+Labels:       <none>
+Annotations:  <none>
+
+Type:  Opaque
+
+Data
+====
+prometheus-additional.yaml:  0 bytes
 ```
 
 
@@ -1267,7 +1301,7 @@ KUBE_EDITOR="nano"  kubectl edit prometheus k8s -n monitoring
 
 ```yaml
 image: quay.io/prometheus/prometheus:v2.32.1
-  additionalScrapeConfigs:
+  additionalScrapeConfigs: #增加配置
     key: prometheus-additional.yaml
     name: additional-configs
     optional: true
@@ -1313,26 +1347,51 @@ kubectl create secret generic additional-configs --from-file=prometheus-addition
 检查配置
 从Prometheus status-->configuration 页面上检查blackbox配置项
 
+
+
 从Prometheus status-->targets 页面上检查blackbox配置项
+
+
 
 从Prometheus status-->service discovery 页面上检查blackbox配置项
 
+
+
 从Prometheus 首页尝试使用blackbox相关指标进行查看
 
-加载13659 7587 dashboard在grafana中查看blackbox相关数据
+
+
+加载13659 dashboard在grafana中查看blackbox相关数据 其他推荐报表:7587 
+
+![image-20221115151616213](readme.assets/image-20221115151616213.png)
 
 
 
 ### 监控Windows Exporter
 
-下载安装Windows Exporter
+下载并安装Windows Exporter
 
 https://github.com/prometheus-community/windows_exporter/releases
 
-
-
 查看本地的metrics输出信息
-http://192.168.1.6:9182/metrics
+
+```bash
+curl -s "http://192.168.1.6:9182/metrics" | tail -l
+```
+
+```bash
+root@node1:~# curl -s "http://192.168.1.6:9182/metrics" | tail -l
+windows_system_system_calls_total 2.17871068e+08
+# HELP windows_system_system_up_time System boot time (WMI source: PerfOS_System.SystemUpTime)
+# TYPE windows_system_system_up_time gauge
+windows_system_system_up_time 1.6683326515004222e+09
+# HELP windows_system_threads Current number of threads (WMI source: PerfOS_System.Threads)
+# TYPE windows_system_threads gauge
+windows_system_threads 6023
+# HELP windows_textfile_scrape_error 1 if there was an error opening or reading a file, 0 otherwise
+# TYPE windows_textfile_scrape_error gauge
+windows_textfile_scrape_error 0
+```
 
 
 
@@ -1346,7 +1405,7 @@ nano prometheus-additional.yaml
 - job_name: 'WindowsServerMonitor'
   static_configs:
     - targets:
-      - "192.168.1.6:9182"
+      - "192.168.1.6:9182" # 被监控的windows机器的IP
       labels:
         server_type: 'windows'
   relabel_configs:
@@ -1367,19 +1426,31 @@ kubectl create secret generic additional-configs --from-file=prometheus-addition
 检查配置
 从Prometheus status-->configuration 页面上检查Windows配置项
 
+
+
 从Prometheus status-->targets 页面上检查Windows配置项
+
+
 
 从Prometheus status-->service discovery 页面上检查Windows配置项
 
+
+
 从Prometheus 首页尝试使用Windows相关指标进行查看
 
-加载10467  15453 dashboard在grafana中查看Windows相关数据
 
 
+加载10467  dashboard在grafana中查看Windows相关数据15453 
+
+![image-20221115151412641](readme.assets/image-20221115151412641.png)
+
+
+
+# 告警设置
 
 ## 启用AlertManger
 
-*编辑 alertmanager-secret.yaml
+编辑 alertmanager-secret.yaml并更新配置
 
 ```bash
 cd kube-prometheus/manifests/
@@ -1460,8 +1531,6 @@ type: Opaque
 
 
 
-更新配置
-
 ```bash
 kubectl apply -f  alertmanager-secret.yaml
 ```
@@ -1470,9 +1539,13 @@ kubectl apply -f  alertmanager-secret.yaml
 
 在alertmanager界面查看更新的报警组
 
+![image-20221115152508557](readme.assets/image-20221115152508557.png)
+
 
 
 在alertmanager status界面查看更新的config
+
+![image-20221115152625718](readme.assets/image-20221115152625718.png)
 
 
 
@@ -1490,7 +1563,47 @@ kubectl get prometheusrule -n monitoring
 kubectl get prometheusrule node-exporter-rules -n monitoring -o yaml
 ```
 
+```bash
+ - alert: NodeClockNotSynchronising
+      annotations:
+        description: Clock on {{ $labels.instance }} is not synchronising. Ensure
+          NTP is configured on this host.
+        runbook_url: https://runbooks.prometheus-operator.dev/runbooks/node/nodeclocknotsynchronising
+        summary: Clock not synchronising.
+      expr: |
+        min_over_time(node_timex_sync_status[5m]) == 0
+        and
+        node_timex_maxerror_seconds >= 16
+      for: 10m
+      labels:
+        severity: warning
+```
 
+
+
+到Prometheus-->Alert页面查看报警信息
+
+![image-20221115154554865](readme.assets/image-20221115154554865.png)
+
+查看报警邮件:
+
+![image-20221115153517981](readme.assets/image-20221115153517981.png)
+
+
+
+到Prometheus-->Alert页面查看watchdog报警信息
+
+![image-20221115154823629](readme.assets/image-20221115154823629.png)
+
+
+
+按照设置的由规则,watchdog的邮件被发送到零一个信箱
+
+![image-20221115153602874](readme.assets/image-20221115153602874.png)
+
+
+
+## 设置报警范例: 网站访问延时报警
 
 创建web网站报警配置
 
@@ -1530,7 +1643,38 @@ kubectl apply -f web-rule.yaml
 
 
 
+查看新创建的规则
+
+```
+ kubectl get PrometheusRule -n monitoring
+```
+
+```bash
+root@node1:~# kubectl get PrometheusRule -n monitoring
+NAME                              AGE
+alertmanager-main-rules           6h11m
+blackbox                          30s
+kube-prometheus-rules             6h11m
+kube-state-metrics-rules          6h11m
+kubernetes-monitoring-rules       6h11m
+node-exporter-rules               6h11m
+prometheus-k8s-prometheus-rules   6h11m
+prometheus-operator-rules         6h11m
+```
+
+
+
+到Prometheus-->Alert页面查看报警信息
+
+![image-20221115154157568](readme.assets/image-20221115154157568.png)
+
+
+
 到邮箱查看告警邮件
+
+![image-20221115154241343](readme.assets/image-20221115154241343.png)
+
+
 
 # 事件收集日志分析
 

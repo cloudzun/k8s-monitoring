@@ -400,18 +400,79 @@ workqueue_work_duration_seconds_count{name="DynamicCABundle-client-ca-bundle"} 2
 
 ### Exporter模式
 
-解析exporter监控模式
+查看node-exporter配置
 
 ```bash
-netstat -lantup
+kubectl get servicemonitor -n monitoring node-exporter -o yaml
+```
+
+```yaml
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  annotations:
+    kubectl.kubernetes.io/last-applied-configuration: |
+      {"apiVersion":"monitoring.coreos.com/v1","kind":"ServiceMonitor","metadata":{"annotations":{},"labels":{"app.kubernetes.io/component":"exporter","app.kubernetes.io/name":"node-exporter","app.kubernetes.io/part-of":"kube-prometheus","app.kubernetes.io/version":"1.3.1"},"name":"node-exporter","namespace":"monitoring"},"spec":{"endpoints":[{"bearerTokenFile":"/var/run/secrets/kubernetes.io/serviceaccount/token","interval":"15s","port":"https","relabelings":[{"action":"replace","regex":"(.*)","replacement":"$1","sourceLabels":["__meta_kubernetes_pod_node_name"],"targetLabel":"instance"}],"scheme":"https","tlsConfig":{"insecureSkipVerify":true}}],"jobLabel":"app.kubernetes.io/name","selector":{"matchLabels":{"app.kubernetes.io/component":"exporter","app.kubernetes.io/name":"node-exporter","app.kubernetes.io/part-of":"kube-prometheus"}}}}
+  creationTimestamp: "2022-11-15T01:26:36Z"
+  generation: 1
+  labels:
+    app.kubernetes.io/component: exporter
+    app.kubernetes.io/name: node-exporter
+    app.kubernetes.io/part-of: kube-prometheus
+    app.kubernetes.io/version: 1.3.1
+  name: node-exporter
+  namespace: monitoring
+  resourceVersion: "3805"
+  uid: 766a747a-2680-4ebc-ae25-dfd27270fb11
+spec:
+  endpoints:
+  - bearerTokenFile: /var/run/secrets/kubernetes.io/serviceaccount/token
+    interval: 15s
+    port: https
+    relabelings:
+    - action: replace
+      regex: (.*)
+      replacement: $1
+      sourceLabels:
+      - __meta_kubernetes_pod_node_name
+      targetLabel: instance
+    scheme: https
+    tlsConfig:
+      insecureSkipVerify: true
+  jobLabel: app.kubernetes.io/name
+  selector:
+    matchLabels:
+      app.kubernetes.io/component: exporter
+      app.kubernetes.io/name: node-exporter
+      app.kubernetes.io/part-of: kube-prometheus
+
 ```
 
 
 
-查看node exporter
+查看node-exporter servicemonitor对应的服务
 
 ```bash
-ps aux | grep node
+kubectl get svc -n monitoring -l app.kubernetes.io/name=node-exporter
+```
+
+```bash
+root@node1:~# kubectl get svc -n monitoring -l app.kubernetes.io/name=node-exporter
+NAME            TYPE        CLUSTER-IP   EXTERNAL-IP   PORT(S)    AGE
+node-exporter   ClusterIP   None         <none>        9100/TCP   4h13m
+```
+
+
+
+查看node-exporter对应的端点
+
+```bash
+kubectl get ep node-exporter -n monitoring
+```
+
+```bash
+NAME            ENDPOINTS                                                  AGE
+node-exporter   192.168.1.231:9100,192.168.1.232:9100,192.168.1.233:9100   4h14m
 ```
 
 
@@ -472,33 +533,11 @@ promhttp_metric_handler_requests_total{code="503"} 0
 
 
 
-
-
-查看node-exporter配置
-
-```bash
-kubectl get servicemonitor -n monitoring node-exporter -o yaml
-```
-
-
-
-查看node-exporter servicemonitor对应的服务
-
-```bash
-kubectl get svc -n monitoring -l app.kubernetes.io/name=node-exporter
-```
-
-
-
-查看node-exporter对应的端点
-
-```bash
-kubectl get ep node-exporter -n monitoring
-```
-
-
-
 加载 dashboard 14513：Linux Exporter Node查看分析效果
+
+![image-20221115135005959](readme.assets/image-20221115135005959.png)
+
+
 
 
 
@@ -510,6 +549,14 @@ kubectl get ep node-exporter -n monitoring
 netstat -lntp | grep etcd
 ```
 
+```bash
+root@node1:~# netstat -lntp | grep etcd
+tcp        0      0 192.168.1.231:2379      0.0.0.0:*               LISTEN      1937/etcd
+tcp        0      0 127.0.0.1:2379          0.0.0.0:*               LISTEN      1937/etcd
+tcp        0      0 192.168.1.231:2380      0.0.0.0:*               LISTEN      1937/etcd
+tcp        0      0 127.0.0.1:2381          0.0.0.0:*               LISTEN      1937/etcd
+```
+
 
 
 尝试访问etcd的metric接口
@@ -518,13 +565,23 @@ netstat -lntp | grep etcd
 curl 192.168.1.231:2379/metrics
 ```
 
-
-
 ```bash
 curl https://192.168.1.231:2379/metrics
 ```
 
-分别看到52和60报错
+```bash
+root@node1:~# curl 192.168.1.231:2379/metrics
+curl: (52) Empty reply from server
+root@node1:~# curl https://192.168.1.231:2379/metrics
+curl: (60) SSL certificate problem: unable to get local issuer certificate
+More details here: https://curl.haxx.se/docs/sslcerts.html
+
+curl failed to verify the legitimacy of the server and therefore could not
+establish a secure connection to it. To learn more about this situation and
+how to fix it, please visit the web page mentioned above.
+```
+
+​		分别看到52和60报错
 
 
 
@@ -532,6 +589,14 @@ curl https://192.168.1.231:2379/metrics
 
 ```bash
 grep -E "key-file|cert-file" /etc/kubernetes/manifests/etcd.yaml
+```
+
+```bash
+root@node1:~# grep -E "key-file|cert-file" /etc/kubernetes/manifests/etcd.yaml
+    - --cert-file=/etc/kubernetes/pki/etcd/server.crt
+    - --key-file=/etc/kubernetes/pki/etcd/server.key
+    - --peer-cert-file=/etc/kubernetes/pki/etcd/peer.crt
+    - --peer-key-file=/etc/kubernetes/pki/etcd/peer.key
 ```
 
 
@@ -542,10 +607,39 @@ grep -E "key-file|cert-file" /etc/kubernetes/manifests/etcd.yaml
 curl -s --cert /etc/kubernetes/pki/etcd/server.crt --key /etc/kubernetes/pki/etcd/server.key https://192.168.1.231:2379/metrics -k
 ```
 
+```bash
+process_open_fds 110
+# HELP process_resident_memory_bytes Resident memory size in bytes.
+# TYPE process_resident_memory_bytes gauge
+process_resident_memory_bytes 7.9151104e+07
+# HELP process_start_time_seconds Start time of the process since unix epoch in seconds.
+# TYPE process_start_time_seconds gauge
+process_start_time_seconds 1.66847506869e+09
+# HELP process_virtual_memory_bytes Virtual memory size in bytes.
+# TYPE process_virtual_memory_bytes gauge
+process_virtual_memory_bytes 1.1554193408e+10
+# HELP process_virtual_memory_max_bytes Maximum amount of virtual memory available in bytes.
+# TYPE process_virtual_memory_max_bytes gauge
+process_virtual_memory_max_bytes 1.8446744073709552e+19
+# HELP promhttp_metric_handler_requests_in_flight Current number of scrapes being served.
+# TYPE promhttp_metric_handler_requests_in_flight gauge
+promhttp_metric_handler_requests_in_flight 1
+# HELP promhttp_metric_handler_requests_total Total number of scrapes by HTTP status code.
+# TYPE promhttp_metric_handler_requests_total counter
+promhttp_metric_handler_requests_total{code="200"} 0
+promhttp_metric_handler_requests_total{code="500"} 0
+promhttp_metric_handler_requests_total{code="503"} 0
+```
+
 
 
 ```bash
 curl -s --cert /etc/kubernetes/pki/etcd/server.crt --key /etc/kubernetes/pki/etcd/server.key https://192.168.1.231:2379/metrics -k | tail -1
+```
+
+```
+root@node1:~# curl -s --cert /etc/kubernetes/pki/etcd/server.crt --key /etc/kubernetes/pki/etcd/server.key https://192.168.1.231:2379/metrics -k | tail -1
+promhttp_metric_handler_requests_total{code="503"} 0
 ```
 
 
@@ -604,14 +698,24 @@ kubectl apply -f etcd-svc.yaml
 kubectl get svc -A | grep etcd
 ```
 
-  观察服务的ip地址
+```bash
+root@node1:~# kubectl get svc -A | grep etcd
+kube-system   etcd-prom               ClusterIP   10.99.101.218    <none>        2379/TCP                        8s
+```
+
+ 		观察服务的ip地址
 
 
 
 使用上述etcd服务地址访问metric信息
 
 ```bash
-curl -s --cert /etc/kubernetes/pki/etcd/server.crt --key /etc/kubernetes/pki/etcd/server.key https://10.99.164.210:2379/metrics -k | tail -1
+curl -s --cert /etc/kubernetes/pki/etcd/server.crt --key /etc/kubernetes/pki/etcd/server.key https://10.99.101.218:2379/metrics -k | tail -1
+```
+
+```bash
+root@node1:~# curl -s --cert /etc/kubernetes/pki/etcd/server.crt --key /etc/kubernetes/pki/etcd/server.key https://10.99.101.218:2379/metrics -k | tail -1
+promhttp_metric_handler_requests_total{code="503"} 0
 ```
 
 
@@ -630,6 +734,11 @@ kubectl -n monitoring create secret generic etcd-certs --from-file=/etc/kubernet
 kubectl get secret -n monitoring | grep etcd
 ```
 
+```bash
+root@node1:~# kubectl get secret -n monitoring | grep etcd
+etcd-certs                        Opaque                                3      9s
+```
+
 
 
 修改promethus定义，增加certs信息
@@ -640,10 +749,11 @@ KUBE_EDITOR="nano"  kubectl edit prometheus k8s -n monitoring
 
   
 
-```
+```yaml
   replicas: 1
   secrets: #加在此处
   - etcd-certs
+  resources:
 ```
 
 
@@ -654,12 +764,24 @@ KUBE_EDITOR="nano"  kubectl edit prometheus k8s -n monitoring
 kubectl get pod -n monitoring | grep k8s
 ```
 
+```bash
+root@node1:~# kubectl get pod -n monitoring | grep k8s
+prometheus-k8s-0                       2/2     Running   0          21s
+```
+
 
 
 查看etcd证书注入信息
 
 ```bash
 kubectl exec -n  monitoring prometheus-k8s-0  -c prometheus -- ls /etc/prometheus/secrets/etcd-certs
+```
+
+```bash
+root@node1:~# kubectl exec -n  monitoring prometheus-k8s-0  -c prometheus -- ls /etc/prometheus/secrets/etcd-certs
+ca.crt
+healthcheck-client.crt
+healthcheck-client.key
 ```
 
 
@@ -710,28 +832,41 @@ kubectl apply -f servicemonitor.yaml
 查看servicemonitor是否被正常加载
 
 ```bash
-kubectl get servicemonitor -n monitoring
+kubectl get servicemonitor -n monitoring | grep etcd
+```
+
+```bash
+root@node1:~# kubectl get servicemonitor -n monitoring | grep etcd
+etcd                      21s
 ```
 
 
 
 从Prometheus status-->configuration http://node1:30110/config 页面上检查etcd配置项
 
+![image-20221115141010124](readme.assets/image-20221115141010124.png)
+
 
 
 从Prometheus status-->targets 页面上检查etcd配置项
 
-
+![image-20221115141055981](readme.assets/image-20221115141055981.png)
 
 从Prometheus status-->service discovery 页面上检查etcd配置项
+
+![image-20221115141151199](readme.assets/image-20221115141151199.png)
 
 
 
 从Prometheus 首页尝试使用etcd相关指标进行查看
 
+![image-20221115141326197](readme.assets/image-20221115141326197.png)
+
 
 
 加载3070 dashboard在grafana中查看etcd相关数据
+
+![image-20221115141426750](readme.assets/image-20221115141426750.png)
 
 
 
@@ -753,12 +888,24 @@ kubectl create deploy mysql --image=registry.cn-beijing.aliyuncs.com/dotbalo/mys
 kubectl get pod
 ```
 
+```bash
+root@node1:~# kubectl get pod
+NAME                     READY   STATUS              RESTARTS   AGE
+mysql-686695c696-rxhlt   0/1     ContainerCreating   0          11s
+```
+
 
 
 获取pod log
 
 ```bash
-kubectl logs mysql-686695c696-9cfld
+kubectl logs mysql-686695c696-rxhlt
+```
+
+```bash
+root@node1:~# kubectl logs mysql-686695c696-rxhlt
+error: database is uninitialized and password option is not specified
+  You need to specify one of MYSQL_ROOT_PASSWORD, MYSQL_ALLOW_EMPTY_PASSWORD and MYSQL_RANDOM_ROOT_PASSWORD
 ```
 
 
@@ -777,6 +924,12 @@ kubectl set env deploy/mysql MYSQL_ROOT_PASSWORD=mysql
 kubectl get pod
 ```
 
+```bash
+root@node1:~# kubectl get pod
+NAME                    READY   STATUS    RESTARTS   AGE
+mysql-d869bcc87-s4gqb   1/1     Running   0          5s
+```
+
 
 
 创建服务
@@ -793,10 +946,18 @@ kubectl expose deploy mysql --port 3306
 kubectl get svc
 ```
 
-
-
 ```bash
 kubectl get svc -l app=mysql
+```
+
+```bash
+root@node1:~# kubectl get svc
+NAME         TYPE        CLUSTER-IP      EXTERNAL-IP   PORT(S)    AGE
+kubernetes   ClusterIP   10.96.0.1       <none>        443/TCP    206d
+mysql        ClusterIP   10.105.85.107   <none>        3306/TCP   9s
+root@node1:~# kubectl get svc -l app=mysql
+NAME    TYPE        CLUSTER-IP      EXTERNAL-IP   PORT(S)    AGE
+mysql   ClusterIP   10.105.85.107   <none>        3306/TCP   16s
 ```
 
 
@@ -807,19 +968,13 @@ kubectl get svc -l app=mysql
 kubectl get pod
 ```
 
-
-
 ```bash
-kubectl exec -ti mysql-69d6f69557-5vnvg -- bash
+kubectl exec -ti mysql-d869bcc87-s4gqb -- bash
 ```
-
-
 
 ```bash
 mysql -uroot -pmysql
 ```
-
-
 
 ```sql
 CREATE USER 'exporter'@'%' IDENTIFIED BY 'exporter' WITH MAX_USER_CONNECTIONS 3;
@@ -827,12 +982,44 @@ CREATE USER 'exporter'@'%' IDENTIFIED BY 'exporter' WITH MAX_USER_CONNECTIONS 3;
 GRANT PROCESS, REPLICATION CLIENT, SELECT ON *.* TO 'exporter'@'%';
 ```
 
-
-
 ```bash
-quit
+exit
 
 exit
+```
+
+```bash
+root@node1:~# kubectl get pod
+NAME                    READY   STATUS    RESTARTS   AGE
+mysql-d869bcc87-s4gqb   1/1     Running   0          104s
+root@node1:~# kubectl exec -ti mysql-d869bcc87-s4gqb -- bash
+root@mysql-d869bcc87-s4gqb:/# mysql -uroot -pmysql
+mysql: [Warning] Using a password on the command line interface can be insecure.
+Welcome to the MySQL monitor.  Commands end with ; or \g.
+Your MySQL connection id is 2
+Server version: 5.7.23 MySQL Community Server (GPL)
+
+Copyright (c) 2000, 2018, Oracle and/or its affiliates. All rights reserved.
+
+Oracle is a registered trademark of Oracle Corporation and/or its
+affiliates. Other names may be trademarks of their respective
+owners.
+
+Type 'help;' or '\h' for help. Type '\c' to clear the current input statement.
+
+mysql> CREATE USER 'exporter'@'%' IDENTIFIED BY 'exporter' WITH MAX_USER_CONNECTIONS 3;
+Query OK, 0 rows affected (0.00 sec)
+
+mysql>
+mysql> GRANT PROCESS, REPLICATION CLIENT, SELECT ON *.* TO 'exporter'@'%';
+Query OK, 0 rows affected (0.00 sec)
+
+mysql> exit
+Bye
+root@mysql-d869bcc87-s4gqb:/# exit
+exit
+command terminated with exit code 127
+root@node1:~#
 ```
 
 
@@ -896,15 +1083,49 @@ kubectl apply -f mysql-exporter.yaml
 验证exporter的运行情况
 
 ```bash
-kubectl get pod -n monitoring
+kubectl get pod -n monitoring | grep mysql
 
-kubectl get svc -n monitoring
+kubectl get svc -n monitoring | grep mysql
+```
+
+```bash
+root@node1:~# kubectl get pod -n monitoring | grep mysql
+mysql-exporter-84b6d8889b-r72vl        1/1     Running   0          56s
+root@node1:~#
+root@node1:~# kubectl get svc -n monitoring | grep mysql
+mysql-exporter          ClusterIP   10.102.106.129   <none>        9104/TCP                        58s
 ```
 
 
 
+查看mysql的metrics数据
+
 ```bash
-curl 10.98.190.181:9104/metrics
+curl 10.102.106.129:9104/metrics
+```
+
+```bash
+process_open_fds 9
+# HELP process_resident_memory_bytes Resident memory size in bytes.
+# TYPE process_resident_memory_bytes gauge
+process_resident_memory_bytes 1.1227136e+07
+# HELP process_start_time_seconds Start time of the process since unix epoch in seconds.
+# TYPE process_start_time_seconds gauge
+process_start_time_seconds 1.66849368105e+09
+# HELP process_virtual_memory_bytes Virtual memory size in bytes.
+# TYPE process_virtual_memory_bytes gauge
+process_virtual_memory_bytes 7.3054208e+08
+# HELP process_virtual_memory_max_bytes Maximum amount of virtual memory available in bytes.
+# TYPE process_virtual_memory_max_bytes gauge
+process_virtual_memory_max_bytes 1.8446744073709552e+19
+# HELP promhttp_metric_handler_requests_in_flight Current number of scrapes being served.
+# TYPE promhttp_metric_handler_requests_in_flight gauge
+promhttp_metric_handler_requests_in_flight 1
+# HELP promhttp_metric_handler_requests_total Total number of scrapes by HTTP status code.
+# TYPE promhttp_metric_handler_requests_total counter
+promhttp_metric_handler_requests_total{code="200"} 0
+promhttp_metric_handler_requests_total{code="500"} 0
+promhttp_metric_handler_requests_total{code="503"} 0
 ```
 
 
@@ -947,7 +1168,12 @@ kubectl apply -f mysql-sm.yaml
 验证ServiceMonitor
 
 ```bash
-kubectl get servicemonitor -n monitoring
+kubectl get servicemonitor -n monitoring | grep mysql
+```
+
+```bash
+root@node1:~# kubectl get servicemonitor -n monitoring | grep mysql
+mysql-exporter            16s
 ```
 
 
@@ -955,47 +1181,23 @@ kubectl get servicemonitor -n monitoring
 检查配置
 从Prometheus status-->configuration 页面上检查MySQL配置项
 
+
+
 从Prometheus status-->targets 页面上检查MySQL配置项
+
+
 
 从Prometheus status-->service discovery 页面上检查MySQL配置项
 
+
+
 从Prometheus 首页尝试使用MySQL相关指标进行查看
 
-加载7362 6239 17320 14057 dashboard在grafana中查看MySQL相关数据
 
 
-
-实验性项目，多个MySQL实例的监控
-https://blog.csdn.net/weixin_44932410/article/details/125029852
-
-后续可以参照
-https://github.com/prometheus/mysqld_exporter
-
-kubectl create ns blog
-
-kubectl apply -f https://raw.githubusercontent.com/cloudzun/k8slab/v1.23/storage/mysql.deploy.yaml
-
-kubectl create ns blog
-
-kubectl exec -ti mysql-deploy-cd587bcb4-hgt68 -n blog  -- bash
-
-mysql -uroot -pwordpress
+加载 17320 dashboard在grafana dashboard中查看MySQL相关数据  (其他推荐:7362 6239 14057 )
 
 
-CREATE USER 'exporter'@'%' IDENTIFIED BY 'exporter' WITH MAX_USER_CONNECTIONS 3;
-
-GRANT PROCESS, REPLICATION CLIENT, SELECT ON *.* TO 'exporter'@'%';
-
-quit
-
-exit
-
-nano mysql-exporter.yaml
-
-        env:
-         - name: DATA_SOURCE_NAME
-           value: "exporter:exporter@(mysql.default:3306)/"
-           value: "exporter:exporter@(mysql.blog.svc.cluster.local:3306)/" #增加监控对象
 
 
 

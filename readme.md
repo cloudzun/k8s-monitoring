@@ -1,3 +1,7 @@
+[TOC]
+
+
+
 # 性能分析
 
 
@@ -1581,6 +1585,12 @@ kubectl get prometheusrule node-exporter-rules -n monitoring -o yaml
 
 
 
+到Prometheus-->rule页面查看 NodeClockNotSynchronising 警告定义信息
+
+![image-20221115155040054](readme.assets/image-20221115155040054.png)
+
+
+
 到Prometheus-->Alert页面查看报警信息
 
 ![image-20221115154554865](readme.assets/image-20221115154554865.png)
@@ -1597,7 +1607,7 @@ kubectl get prometheusrule node-exporter-rules -n monitoring -o yaml
 
 
 
-按照设置的由规则,watchdog的邮件被发送到零一个信箱
+按照设置的由规则,watchdog的邮件被发送到另一个信箱
 
 ![image-20221115153602874](readme.assets/image-20221115153602874.png)
 

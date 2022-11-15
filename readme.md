@@ -4,7 +4,11 @@
 
 ## 安装prometheus-stack
 
-首先到https://github.com/prometheus-operator/kube-prometheus确定兼容当前kubenetes版本的分支，本例中，适配1.23的分支是0.10
+首先到 https://github.com/prometheus-operator/kube-prometheus 确定兼容当前kubenetes版本的分支
+
+本例中，适配1.23的分支是0.10
+
+
 
 克隆匹配的分支
 
@@ -32,12 +36,36 @@ kubectl apply -f manifests/
 kubectl get crd | grep monitoring
 ```
 
+```bash
+root@node1:~/kube-prometheus# kubectl get crd | grep monitoring
+alertmanagerconfigs.monitoring.coreos.com             2022-11-15T01:26:29Z
+alertmanagers.monitoring.coreos.com                   2022-11-15T01:26:29Z
+podmonitors.monitoring.coreos.com                     2022-11-15T01:26:30Z
+probes.monitoring.coreos.com                          2022-11-15T01:26:30Z
+prometheuses.monitoring.coreos.com                    2022-11-15T01:26:30Z
+prometheusrules.monitoring.coreos.com                 2022-11-15T01:26:30Z
+servicemonitors.monitoring.coreos.com                 2022-11-15T01:26:30Z
+thanosrulers.monitoring.coreos.com                    2022-11-15T01:26:30Z
+```
+
 
 
 查看相关的api资源
 
 ```bash
 kubectl api-resources | grep monitoring
+```
+
+```bash
+root@node1:~/kube-prometheus# kubectl api-resources | grep monitoring
+alertmanagerconfigs                            monitoring.coreos.com/v1alpha1         true         AlertmanagerConfig
+alertmanagers                                  monitoring.coreos.com/v1               true         Alertmanager
+podmonitors                                    monitoring.coreos.com/v1               true         PodMonitor
+probes                                         monitoring.coreos.com/v1               true         Probe
+prometheuses                                   monitoring.coreos.com/v1               true         Prometheus
+prometheusrules                                monitoring.coreos.com/v1               true         PrometheusRule
+servicemonitors                                monitoring.coreos.com/v1               true         ServiceMonitor
+thanosrulers                                   monitoring.coreos.com/v1               true         ThanosRuler
 ```
 
 
@@ -48,12 +76,46 @@ kubectl api-resources | grep monitoring
 kubectl get pod -n monitoring
 ```
 
+```bash
+root@node1:~/kube-prometheus# kubectl get pod -n monitoring
+NAME                                   READY   STATUS    RESTARTS   AGE
+alertmanager-main-0                    2/2     Running   0          2m22s
+alertmanager-main-1                    2/2     Running   0          2m22s
+alertmanager-main-2                    2/2     Running   0          2m22s
+blackbox-exporter-6b79c4588b-p5czf     3/3     Running   0          3m28s
+grafana-7fd69887fb-94dgw               1/1     Running   0          3m27s
+kube-state-metrics-55f67795cd-rgwms    3/3     Running   0          3m27s
+node-exporter-8qf7s                    2/2     Running   0          3m27s
+node-exporter-rv54c                    2/2     Running   0          3m27s
+node-exporter-x7tjn                    2/2     Running   0          3m27s
+prometheus-adapter-5565cc8d76-bmrpg    1/1     Running   0          3m25s
+prometheus-adapter-5565cc8d76-kwlmn    1/1     Running   0          3m25s
+prometheus-k8s-0                       2/2     Running   0          2m21s
+prometheus-k8s-1                       2/2     Running   0          2m21s
+prometheus-operator-6dc9f66cb7-cn9cc   2/2     Running   0          3m25s
+```
+
 
 
 查看svc
 
 ```bash
 kubectl get svc -n monitoring
+```
+
+```bash
+root@node1:~/kube-prometheus# kubectl get svc -n monitoring
+NAME                    TYPE        CLUSTER-IP       EXTERNAL-IP   PORT(S)                      AGE
+alertmanager-main       ClusterIP   10.97.66.233     <none>        9093/TCP,8080/TCP            4m10s
+alertmanager-operated   ClusterIP   None             <none>        9093/TCP,9094/TCP,9094/UDP   3m4s
+blackbox-exporter       ClusterIP   10.106.215.152   <none>        9115/TCP,19115/TCP           4m10s
+grafana                 ClusterIP   10.101.130.249   <none>        3000/TCP                     4m9s
+kube-state-metrics      ClusterIP   None             <none>        8443/TCP,9443/TCP            4m9s
+node-exporter           ClusterIP   None             <none>        9100/TCP                     4m9s
+prometheus-adapter      ClusterIP   10.106.237.229   <none>        443/TCP                      4m7s
+prometheus-k8s          ClusterIP   10.104.4.173     <none>        9090/TCP,8080/TCP            4m8s
+prometheus-operated     ClusterIP   None             <none>        9090/TCP                     3m3s
+prometheus-operator     ClusterIP   None             <none>        8443/TCP                     4m7s
 ```
 
 
@@ -92,7 +154,48 @@ kubectl patch service alertmanager-main --namespace=monitoring --type='json' --p
 nano manifests/alertmanager-alertmanager.yaml
 ```
 
-kubectl apply -f alertmanager-alertmanager.yaml
+```yaml
+apiVersion: monitoring.coreos.com/v1
+kind: Alertmanager
+metadata:
+  labels:
+    app.kubernetes.io/component: alert-router
+    app.kubernetes.io/instance: main
+    app.kubernetes.io/name: alertmanager
+    app.kubernetes.io/part-of: kube-prometheus
+    app.kubernetes.io/version: 0.23.0
+  name: main
+  namespace: monitoring
+spec:
+  image: quay.io/prometheus/alertmanager:v0.23.0
+  nodeSelector:
+    kubernetes.io/os: linux
+  podMetadata:
+    labels:
+      app.kubernetes.io/component: alert-router
+      app.kubernetes.io/instance: main
+      app.kubernetes.io/name: alertmanager
+      app.kubernetes.io/part-of: kube-prometheus
+      app.kubernetes.io/version: 0.23.0
+  replicas: 3 #如果不需要高可用性此处修改为1
+  resources:
+    limits:
+      cpu: 100m
+      memory: 100Mi
+    requests:
+      cpu: 4m
+      memory: 100Mi
+  securityContext:
+    fsGroup: 2000
+    runAsNonRoot: true
+    runAsUser: 1000
+  serviceAccountName: alertmanager-main
+  version: 0.23.0
+```
+
+```bash
+kubectl apply -f manifests/alertmanager-alertmanager.yaml
+```
 
 
 
@@ -102,7 +205,60 @@ kubectl apply -f alertmanager-alertmanager.yaml
 nano manifests/prometheus-prometheus.yaml
 ```
 
-kubectl apply -f prometheus-prometheus.yaml
+```bash
+apiVersion: monitoring.coreos.com/v1
+kind: Prometheus
+metadata:
+  labels:
+    app.kubernetes.io/component: prometheus
+    app.kubernetes.io/instance: k8s
+    app.kubernetes.io/name: prometheus
+    app.kubernetes.io/part-of: kube-prometheus
+    app.kubernetes.io/version: 2.32.1
+  name: k8s
+  namespace: monitoring
+spec:
+  alerting:
+    alertmanagers:
+    - apiVersion: v2
+      name: alertmanager-main
+      namespace: monitoring
+      port: web
+  enableFeatures: []
+  externalLabels: {}
+  image: quay.io/prometheus/prometheus:v2.32.1
+  nodeSelector:
+    kubernetes.io/os: linux
+  podMetadata:
+    labels:
+      app.kubernetes.io/component: prometheus
+      app.kubernetes.io/instance: k8s
+      app.kubernetes.io/name: prometheus
+      app.kubernetes.io/part-of: kube-prometheus
+      app.kubernetes.io/version: 2.32.1
+  podMonitorNamespaceSelector: {}
+  podMonitorSelector: {}
+  probeNamespaceSelector: {}
+  probeSelector: {}
+  replicas: 2 #如果不需要高可用性此处可以修改为1
+  resources:
+    requests:
+      memory: 400Mi
+  ruleNamespaceSelector: {}
+  ruleSelector: {}
+  securityContext:
+    fsGroup: 2000
+    runAsNonRoot: true
+    runAsUser: 1000
+  serviceAccountName: prometheus-k8s
+  serviceMonitorNamespaceSelector: {}
+  serviceMonitorSelector: {}
+  version: 2.32.1
+```
+
+```bash
+kubectl apply -f manifests/prometheus-prometheus.yaml
+```
 
 
 
@@ -116,15 +272,42 @@ nano kubeStateMetrics-deployment.yaml
 
 将k8s.gcr.io/kube-state-metrics/kube-state-metrics:v2.3.0替换为bitnami/kube-state-metrics:2.3.0
 
+```
 kubectl apply -f prometheus-prometheus.yaml
+```
+
+```yaml
+      - args:
+        - --host=127.0.0.1
+        - --port=8081
+        - --telemetry-host=127.0.0.1
+        - --telemetry-port=8082
+        image: bitnami/kube-state-metrics:2.3.0
+```
 
 
 
-如果使用lens，在metric配置页面中选择Prometheus Operator monitoring/prometheus-k8s:9090
+如果使用lens，在metric配置页面中选择 Prometheus Operator monitoring/prometheus-k8s:9090
 
 
 
 推荐dashboard
+
+![image-20221115094302169](readme.assets/image-20221115094302169.png)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 - 315
 - 1860：Node Exporter Full
@@ -137,11 +320,87 @@ kubectl apply -f prometheus-prometheus.yaml
 
 
 
-## Exporter监控模式分析
+## 监控模式分析
+
+### Metric监控模式
+
+查看servicemonitor对象
+
+```bash
+kubectl get servicemonitor -n monitoring
+```
+
+```bash
+root@node1:~/kube-prometheus# kubectl get servicemonitor -n monitoring
+NAME                      AGE
+alertmanager-main         30m
+blackbox-exporter         30m
+coredns                   30m
+grafana                   30m
+kube-apiserver            30m
+kube-controller-manager   30m
+kube-scheduler            30m
+kube-state-metrics        30m
+kubelet                   30m
+node-exporter             30m
+prometheus-adapter        30m
+prometheus-k8s            30m
+prometheus-operator       30m
+```
 
 
 
-解析export监控模式
+以kubelet为例,查看kube-proxy通讯
+
+```bash
+netstat -lntp | grep kubelet
+```
+
+```bash
+root@node1:~# netstat -lntp | grep kubelet
+tcp        0      0 127.0.0.1:40125         0.0.0.0:*               LISTEN      866/kubelet
+tcp        0      0 127.0.0.1:10248         0.0.0.0:*               LISTEN      866/kubelet
+tcp6       0      0 :::10250                :::*                    LISTEN      866/kubelet
+```
+
+
+
+尝试访问kube-proxy metric
+
+```bash
+curl --cacert /var/lib/kubelet/pki/kubelet.crt --cert /etc/kubernetes/pki/apiserver-kubelet-client.crt --key /etc/kubernetes/pki/apiserver-kubelet-client.key  https://node1:10250/metrics
+```
+
+```bash
+workqueue_unfinished_work_seconds{name="DynamicCABundle-client-ca-bundle"} 0
+# HELP workqueue_work_duration_seconds [ALPHA] How long in seconds processing an item from workqueue takes.
+# TYPE workqueue_work_duration_seconds histogram
+workqueue_work_duration_seconds_bucket{name="DynamicCABundle-client-ca-bundle",le="1e-08"} 0
+workqueue_work_duration_seconds_bucket{name="DynamicCABundle-client-ca-bundle",le="1e-07"} 0
+workqueue_work_duration_seconds_bucket{name="DynamicCABundle-client-ca-bundle",le="1e-06"} 0
+workqueue_work_duration_seconds_bucket{name="DynamicCABundle-client-ca-bundle",le="9.999999999999999e-06"} 0
+workqueue_work_duration_seconds_bucket{name="DynamicCABundle-client-ca-bundle",le="9.999999999999999e-05"} 1
+workqueue_work_duration_seconds_bucket{name="DynamicCABundle-client-ca-bundle",le="0.001"} 2
+workqueue_work_duration_seconds_bucket{name="DynamicCABundle-client-ca-bundle",le="0.01"} 2
+workqueue_work_duration_seconds_bucket{name="DynamicCABundle-client-ca-bundle",le="0.1"} 2
+workqueue_work_duration_seconds_bucket{name="DynamicCABundle-client-ca-bundle",le="1"} 2
+workqueue_work_duration_seconds_bucket{name="DynamicCABundle-client-ca-bundle",le="10"} 2
+workqueue_work_duration_seconds_bucket{name="DynamicCABundle-client-ca-bundle",le="+Inf"} 2
+workqueue_work_duration_seconds_sum{name="DynamicCABundle-client-ca-bundle"} 0.000138202
+workqueue_work_duration_seconds_count{name="DynamicCABundle-client-ca-bundle"} 2
+```
+
+
+
+查看grafana dashboard
+
+![image-20221115103312398](readme.assets/image-20221115103312398.png)
+
+
+
+### Exporter模式
+
+解析exporter监控模式
 
 ```bash
 netstat -lantup
@@ -163,6 +422,12 @@ ps aux | grep node
 netstat -lntp | grep 9100
 ```
 
+```bash
+root@node1:~/kube-prometheus# netstat -lntp | grep 9100
+tcp        0      0 192.168.1.231:9100      0.0.0.0:*               LISTEN      13110/kube-rbac-pro
+tcp        0      0 127.0.0.1:9100          0.0.0.0:*               LISTEN      12800/node_exporter
+```
+
 
 
 收集本地metric信息
@@ -171,27 +436,41 @@ netstat -lntp | grep 9100
 curl 127.0.0.1:9100/metrics
 ```
 
-
-
-解析metric监控模式
-
 ```bash
-netstat -lntp | grep kube-proxy
+process_cpu_seconds_total 4.89
+# HELP process_max_fds Maximum number of open file descriptors.
+# TYPE process_max_fds gauge
+process_max_fds 1.048576e+06
+# HELP process_open_fds Number of open file descriptors.
+# TYPE process_open_fds gauge
+process_open_fds 10
+# HELP process_resident_memory_bytes Resident memory size in bytes.
+# TYPE process_resident_memory_bytes gauge
+process_resident_memory_bytes 2.0754432e+07
+# HELP process_start_time_seconds Start time of the process since unix epoch in seconds.
+# TYPE process_start_time_seconds gauge
+process_start_time_seconds 1.66847561101e+09
+# HELP process_virtual_memory_bytes Virtual memory size in bytes.
+# TYPE process_virtual_memory_bytes gauge
+process_virtual_memory_bytes 7.35113216e+08
+# HELP process_virtual_memory_max_bytes Maximum amount of virtual memory available in bytes.
+# TYPE process_virtual_memory_max_bytes gauge
+process_virtual_memory_max_bytes 1.8446744073709552e+19
+# HELP promhttp_metric_handler_errors_total Total number of internal errors encountered by the promhttp metric handler.
+# TYPE promhttp_metric_handler_errors_total counter
+promhttp_metric_handler_errors_total{cause="encoding"} 0
+promhttp_metric_handler_errors_total{cause="gathering"} 0
+# HELP promhttp_metric_handler_requests_in_flight Current number of scrapes being served.
+# TYPE promhttp_metric_handler_requests_in_flight gauge
+promhttp_metric_handler_requests_in_flight 1
+# HELP promhttp_metric_handler_requests_total Total number of scrapes by HTTP status code.
+# TYPE promhttp_metric_handler_requests_total counter
+promhttp_metric_handler_requests_total{code="200"} 104
+promhttp_metric_handler_requests_total{code="500"} 0
+promhttp_metric_handler_requests_total{code="503"} 0
 ```
 
 
-
-```bash
-curl http://127.0.0.1:10249/metrics
-```
-
-
-
-查看servicemonitor对象
-
-```bash
-kubectl get servicemonitor -n monitoring
-```
 
 
 

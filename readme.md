@@ -272,10 +272,6 @@ kubectl apply -f manifests/prometheus-prometheus.yaml
 nano kubeStateMetrics-deployment.yaml  
 ```
 
-
-
-将k8s.gcr.io/kube-state-metrics/kube-state-metrics:v2.3.0替换为bitnami/kube-state-metrics:2.3.0
-
 ```
 kubectl apply -f prometheus-prometheus.yaml
 ```
@@ -289,7 +285,9 @@ kubectl apply -f prometheus-prometheus.yaml
         image: bitnami/kube-state-metrics:2.3.0
 ```
 
+​		将k8s.gcr.io/kube-state-metrics/kube-state-metrics:v2.3.0替换为bitnami/kube-state-metrics:2.3.0	
 
+​	
 
 如果使用lens，在metric配置页面中选择 Prometheus Operator monitoring/prometheus-k8s:9090
 
@@ -474,7 +472,17 @@ node-exporter   192.168.1.231:9100,192.168.1.232:9100,192.168.1.233:9100   4h14m
 
 
 
-查看9100端口的通信
+查看node  exporter的通信
+
+```bash
+ps aux | grep node_exporter
+```
+
+```bash
+root@node1:~# ps aux | grep node_exporter
+nobody     12800  0.4  0.2 718140 22372 ?        Ssl  Nov16   5:55 /bin/node_exporter --web.listen-address=127.0.0.1:9100 --path.sysfs=/host/sys --path.rootfs=/host/root --no-collector.wifi --no-collector.hwmon --collector.filesystem.mount-points-exclude=^/(dev|proc|sys|run/k3s/containerd/.+|var/lib/docker/.+|var/lib/kubelet/pods/.+)($|/) --collector.netclass.ignored-devices=^(veth.*|[a-f0-9]{15})$ --collector.netdev.device-exclude=^(veth.*|[a-f0-9]{15})$
+root     1867280  0.0  0.0   9032  2668 pts/0    S+   13:21   0:00 grep --color=auto node_exporter
+```
 
 ```bash
 netstat -lntp | grep 9100
@@ -516,9 +524,7 @@ promhttp_metric_handler_requests_total{code="503"} 0
 
 
 
-
-
-## ETCD的监控
+## 云原生应用监控示例: 监控ETCD
 
 查看etcd的端口
 
@@ -739,8 +745,6 @@ healthcheck-client.key
 nano servicemonitor.yaml
 ```
 
-
-
 ```yaml
 apiVersion: monitoring.coreos.com/v1
 kind: ServiceMonitor
@@ -767,8 +771,6 @@ spec:
     matchNames:
     - kube-system
 ```
-
-
 
 ```bash
 kubectl apply -f servicemonitor.yaml
@@ -817,9 +819,7 @@ etcd                      21s
 
 
 
-
-
-## 配置MySQL-Exporter
+## 非云原生应用监控示例: MySQL-Exporter
 
 创建MySLQ样例
 
@@ -2043,7 +2043,7 @@ kubectl patch service kb-kibana --namespace=efk --type='json' --patch='[{"op": "
 
 
 
-## Filebeat注入实验
+## Filebeat 注入收集非云原生应用日志
 
 查看命名空间 efk 中的 pod
 

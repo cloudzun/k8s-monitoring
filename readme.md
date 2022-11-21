@@ -293,27 +293,20 @@ kubectl apply -f prometheus-prometheus.yaml
 
 
 
-推荐dashboard
+展现 dashboard
 
 ![image-20221115094302169](readme.assets/image-20221115094302169.png)
 
 
 
+推荐报表
 
+- k8s-views-global： 15757
+- k8s-views-namespaces： 15758
+- k8s-views-nodes： 15759
+- k8s-views-pods： 15760
 
-
-
-
-
-
-
-
-
-
-
-- 315
 - 1860：Node Exporter Full
-
 - 13105：K8S Prometheus Dashboard 20211010 中文版
 
 - ： Node Exporter for Prometheus Dashboard EN 20201010
@@ -352,7 +345,7 @@ prometheus-operator       30m
 
 
 
-以kubelet为例,查看kube-proxy通讯
+以kubelet为例,查看通讯
 
 ```bash
 netstat -lntp | grep kubelet
@@ -367,7 +360,7 @@ tcp6       0      0 :::10250                :::*                    LISTEN      
 
 
 
-尝试访问kube-proxy metric
+尝试访问kubelet metric
 
 ```bash
 curl -s --cacert /var/lib/kubelet/pki/kubelet.crt --cert /etc/kubernetes/pki/apiserver-kubelet-client.crt --key /etc/kubernetes/pki/apiserver-kubelet-client.key  https://node1:10250/metrics | tail -l
@@ -389,6 +382,8 @@ workqueue_work_duration_seconds_count{name="DynamicCABundle-client-ca-bundle"} 2
 
 
 
+
+
 查看grafana dashboard
 
 ![image-20221115103312398](readme.assets/image-20221115103312398.png)
@@ -398,6 +393,21 @@ workqueue_work_duration_seconds_count{name="DynamicCABundle-client-ca-bundle"} 2
 ### Exporter模式
 
 查看node-exporter配置
+
+```bash
+kubectl get pod -n monitoring | grep node-exporter
+```
+
+```bash
+root@node1:~# kubectl get pod -n monitoring | grep node-exporter
+node-exporter-8qf7s                    2/2     Running   0          2d4h
+node-exporter-rv54c                    2/2     Running   0          2d4h
+node-exporter-x7tjn                    2/2     Running   0          2d4h
+```
+
+
+
+查看service monitor
 
 ```bash
 kubectl get servicemonitor -n monitoring node-exporter -o yaml
@@ -475,16 +485,6 @@ node-exporter   192.168.1.231:9100,192.168.1.232:9100,192.168.1.233:9100   4h14m
 查看node  exporter的通信
 
 ```bash
-ps aux | grep node_exporter
-```
-
-```bash
-root@node1:~# ps aux | grep node_exporter
-nobody     12800  0.4  0.2 718140 22372 ?        Ssl  Nov16   5:55 /bin/node_exporter --web.listen-address=127.0.0.1:9100 --path.sysfs=/host/sys --path.rootfs=/host/root --no-collector.wifi --no-collector.hwmon --collector.filesystem.mount-points-exclude=^/(dev|proc|sys|run/k3s/containerd/.+|var/lib/docker/.+|var/lib/kubelet/pods/.+)($|/) --collector.netclass.ignored-devices=^(veth.*|[a-f0-9]{15})$ --collector.netdev.device-exclude=^(veth.*|[a-f0-9]{15})$
-root     1867280  0.0  0.0   9032  2668 pts/0    S+   13:21   0:00 grep --color=auto node_exporter
-```
-
-```bash
 netstat -lntp | grep 9100
 ```
 
@@ -496,7 +496,7 @@ tcp        0      0 127.0.0.1:9100          0.0.0.0:*               LISTEN      
 
 
 
-收集本地metric信息
+收集当前节点（node1）的metric信息，之所以使用本地回环地址，主要是可以使用http通讯，简化演示效果
 
 ```bash
 curl -s "http://127.0.0.1:9100/metrics" | tail -l

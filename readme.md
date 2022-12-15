@@ -2,11 +2,11 @@
 
 
 
-# 性能分析
+# 
 
 
 
-## 安装prometheus-stack
+# 安装prometheus-stack
 
 首先到 https://github.com/prometheus-operator/kube-prometheus 确定兼容当前kubenetes版本的分支
 
@@ -315,9 +315,9 @@ kubectl apply -f prometheus-prometheus.yaml
 
 
 
-## 监控模式分析
+# 监控模式分析
 
-### Metric监控模式
+## Metric监控模式
 
 查看servicemonitor对象
 
@@ -390,7 +390,7 @@ workqueue_work_duration_seconds_count{name="DynamicCABundle-client-ca-bundle"} 2
 
 
 
-### Exporter模式
+## Exporter模式
 
 查看node-exporter配置
 
@@ -524,7 +524,7 @@ promhttp_metric_handler_requests_total{code="503"} 0
 
 
 
-## 云原生应用监控示例: 监控ETCD
+# 云原生应用监控示例: 监控ETCD
 
 查看etcd的端口
 
@@ -819,7 +819,7 @@ etcd                      21s
 
 
 
-## 非云原生应用监控示例: MySQL-Exporter
+# 非云原生应用监控示例: MySQL-Exporter
 
 创建MySLQ样例
 
@@ -1138,7 +1138,7 @@ mysql-exporter            16s
 
 
 
-## 黑盒监控
+# 黑盒监控
 
 检查黑blackbox-exporter配置
 
@@ -1249,11 +1249,11 @@ metadata:
 
 
 
-## 静态配置
+# 静态配置
 
 
 
-### 监控web url
+## 监控web url
 
 创建静态配置
 
@@ -1371,7 +1371,7 @@ kubectl create secret generic additional-configs --from-file=prometheus-addition
 
 
 
-### 监控Windows Exporter
+## 监控Windows Exporter
 
 下载并安装Windows Exporter
 
@@ -1686,17 +1686,15 @@ prometheus-operator-rules         6h11m
 
 
 
-# 事件收集日志分析
 
 
 
 
-
-## 实现Elasticsearch+filebeat+Kibana Stack
-
+# 实现Elasticsearch+filebeat+Kibana Stack
 
 
-### 部署块存储方案 
+
+## 部署块存储方案 
 
 安装longhorn
 
@@ -1799,7 +1797,7 @@ kubectl patch service longhorn-frontend --namespace=longhorn-system --type='json
 
 
 
-### 部署EFK Stack
+## 部署EFK Stack
 
 下载Helm仓库源码
 
@@ -2043,7 +2041,7 @@ kubectl patch service kb-kibana --namespace=efk --type='json' --patch='[{"op": "
 
 
 
-## Filebeat 注入收集非云原生应用日志
+# Filebeat 注入收集非云原生应用日志
 
 查看命名空间 efk 中的 pod
 
@@ -2443,7 +2441,7 @@ Events:
 
 
 
-## 使用Loki构建轻量级日志收集体系
+# 使用Loki构建轻量级日志收集体系
 
 
 

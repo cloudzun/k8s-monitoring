@@ -1947,7 +1947,7 @@ kubectl get pvc -n efk
 
 
 
-```
+```bash
 root@node1:~# kubectl get pvc -n efk
 NAME                                          STATUS   VOLUME                                     CAPACITY   ACCESS MODES   STORAGECLASS   AGE
 elasticsearch-master-elasticsearch-master-0   Bound    pvc-d6243ec6-f4cf-4ea5-9286-60a335cc2518   30Gi       RWO            longhorn       4h6m
@@ -1961,7 +1961,7 @@ kubectl get pv
 
 
 
-```
+```bash
 root@node1:~# kubectl get pv
 NAME                                       CAPACITY   ACCESS MODES   RECLAIM POLICY   STATUS   CLAIM                                             STORAGECLASS   REASON   AGE
 pvc-d6243ec6-f4cf-4ea5-9286-60a335cc2518   30Gi       RWO            Delete           Bound    efk/elasticsearch-master-elasticsearch-master-0   longhorn                4h6m
@@ -1984,7 +1984,7 @@ kubectl get pod -n efk
 
 
 
-```
+```bash
 root@node1:~/helm-charts-7.9.2# kubectl get pod -n efk
 NAME                         READY   STATUS    RESTARTS   AGE
 elasticsearch-master-0       1/1     Running   0          3h55m
@@ -2002,7 +2002,7 @@ kubectl get svc -n efk
 
 
 
-```
+```bash
 root@node1:~/helm-charts-7.9.2# kubectl get svc -n efk
 NAME                            TYPE        CLUSTER-IP       EXTERNAL-IP   PORT(S)             AGE
 elasticsearch-master            ClusterIP   10.101.66.117    <none>        9200/TCP,9300/TCP   3h56m
@@ -2051,7 +2051,7 @@ kubectl patch service kb-kibana --namespace=efk --type='json' --patch='[{"op": "
 
 
 
-```
+```bash
 root@node1:~# kubectl get pod -n efk
 NAME                         READY   STATUS    RESTARTS   AGE
 elasticsearch-master-0       1/1     Running   0          4h23m
@@ -2065,13 +2065,13 @@ kb-kibana-76c88c8965-lfdm5   1/1     Running   0          4h18m
 
 查看其中某个pod的日志
 
-```
+```bash
 kubectl logs fb-filebeat-pjsd6  -n efk
 ```
 
 
 
-```
+```bash
 2022-11-14T09:52:41.662Z        INFO    [monitoring]    log/log.go:145  Non-zero metrics in the last 30s        {"monitoring": {"metrics": {"beat":{"cpu":{"system":{"ticks":30140,"time":{"ms":68}},"total":{"ticks":68100,"time":{"ms":93},"value":68100},"user":{"ticks":37960,"time":{"ms":25}}},"handles":{"limit":{"hard":1048576,"soft":1048576},"open":20},"info":{"ephemeral_id":"6e1622b9-df49-421e-b048-0913fba358bd","uptime":{"ms":15660093}},"memstats":{"gc_next":25772688,"memory_alloc":14153344,"memory_total":4278960264},"runtime":{"goroutines":75}},"filebeat":{"events":{"added":68,"done":68},"harvester":{"closed":1,"files":{"394097ab-8b7c-4191-bf7e-bbc1fe38991b":{"last_event_published_time":"2022-11-14T09:52:18.596Z","last_event_timestamp":"2022-11-14T09:52:18.010Z","read_offset":2488,"size":2488},"3a32633d-f952-4acd-a76e-bf04e7e5c00a":{"last_event_published_time":"2022-11-14T09:52:28.958Z","last_event_timestamp":"2022-11-14T09:52:28.622Z","read_offset":2425,"size":1816},"52ba1ebd-1ab6-43ec-b84a-98a55936fbb6":{"last_event_published_time":"2022-11-14T09:52:23.058Z","last_event_timestamp":"2022-11-14T09:52:16.802Z","read_offset":1515},"62895648-a424-412c-94eb-2d5a226d0efd":{"last_event_published_time":"2022-11-14T09:52:33.571Z","last_event_timestamp":"2022-11-14T09:52:32.247Z","read_offset":8606,"size":11561},"f00deb2a-beba-447b-bfbb-7aff831ff0e6":{"last_event_published_time":"2022-11-14T09:52:23.642Z","last_event_timestamp":"2022-11-14T09:52:16.562Z","name":"/var/log/containers/hello-27806992-59lcm_default_hello-506e2399a9dc6ab04ff30e2dcd73954a1cee6da5ab6f5b03f9a66fd9beb1de74.log","read_offset":203,"size":203,"start_time":"2022-11-14T09:52:23.641Z"},"f453639b-a0f1-4cb3-97ea-3cd77775712a":{"last_event_published_time":"2022-11-14T09:52:23.595Z","last_event_timestamp":"2022-11-14T09:52:20.264Z","read_offset":3049}},"open_files":8,"running":8,"started":1}},"libbeat":{"config":{"module":{"running":0}},"output":{"events":{"acked":65,"batches":5,"total":65}},"pipeline":{"clients":1,"events":{"active":0,"filtered":3,"published":65,"total":68},"queue":{"acked":65}}},"registrar":{"states":{"cleanup":1,"current":39,"update":68},"writes":{"success":6,"total":6}},"system":{"load":{"1":0.57,"15":0.94,"5":1.03,"norm":{"1":0.1425,"15":0.235,"5":0.2575}}}}}}
 ```
 
@@ -2152,7 +2152,7 @@ kubectl get pod
 
 
 
-```
+```bash
 root@node1:~# kubectl get pod
 NAME                    READY   STATUS    RESTARTS   AGE
 app-68bc4f46f4-cfvr4    1/1     Running   0          5s
@@ -2167,7 +2167,9 @@ mysql-d869bcc87-45q9p   1/1     Running   0          7h39m
 kubectl logs app-68bc4f46f4-cfvr4
 ```
 
-```
+
+
+```bash
 root@node1:~# kubectl logs app-68bc4f46f4-cfvr4
 root@node1:~#
 ```
@@ -2182,7 +2184,9 @@ root@node1:~#
 kubectl logs mysql-d869bcc87-45q9p
 ```
 
-```
+
+
+```bash
 2022-11-14T02:20:10.126154Z 0 [Warning] 'user' entry 'root@localhost' ignored in --skip-name-resolve mode.
 2022-11-14T02:20:10.126218Z 0 [Warning] 'user' entry 'mysql.session@localhost' ignored in --skip-name-resolve mode.
 2022-11-14T02:20:10.126231Z 0 [Warning] 'user' entry 'mysql.sys@localhost' ignored in --skip-name-resolve mode.
